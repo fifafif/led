@@ -1,9 +1,15 @@
+//#define DMX_ON
+
+#if defined(DMX_ON)
+
 #include <DMXSerial.h>
 #include <DMXSerial_avr.h>
 #include <DMXSerial_megaavr.h>
+
+#endif
+
 #include <Adafruit_NeoPixel.h>
 #include "sequences.h"
-#include "Arduino.h"
 
 #define PIN        4
 #define NUMPIXELS 300
@@ -11,6 +17,7 @@
 #define SEQ_LENGTH 30
 #define DMXSTART 139
 #define DMXLENGTH (512)
+#define BUTTON_IN 2
 
 Adafruit_NeoPixel strip(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -50,25 +57,36 @@ int colorIndex = 0;
 // Sequences
 int fill = 0;
 
+// Overdrive
+bool isOverdrive;
+int lastOverdriveButtonState;
+int remainingOverdriveLoopCount;
+float overdriveAcceleration = 9;
+const int overdriveLoopCount = 3;
+
 void setup () 
 {
-  //Serial.begin(9600);
-  //Serial.write("LED Start");
-  DMXSerial.init(DMXProbe);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(BUTTON_IN, INPUT);
+
+#if defined(DMX_ON)
+  DMXSerial.init(DMXProbe);
   DMXSerial.maxChannel(DMXLENGTH);
+#else
+  Serial.begin(9600);
+  Serial.write("LED Start");
+#endif   
+  
   strip.begin();
 }
 
 void loop() 
 {
-  if (DMXSerial.receive()) 
-  {
-    readDMX();
-  }
+  readDMX();
 
   colorMode = 1;
 
+  readOverrideButton();
   tick();
   updateColorTick(colorMode);
   updateSeq();
@@ -76,6 +94,42 @@ void loop()
  
   strip.show();
   //delay(delayTicks);
+}
+
+void log(char *messaage)
+{
+#if !defined(DMX_ON)
+  Serial.println(messaage);
+#endif
+}
+
+void readOverrideButton()
+{
+  int buttonState = digitalRead(BUTTON_IN);
+  if (buttonState == HIGH
+      && buttonState != lastOverdriveButtonState)
+  {
+    startOverdrive();  
+  }
+
+  lastOverdriveButtonState = buttonState;
+
+  if (buttonState == HIGH) {
+    // turn LED on:
+    digitalWrite(LED_BUILTIN, HIGH);
+  } else {
+    // turn LED off:
+    digitalWrite(LED_BUILTIN, LOW);
+  }
+}
+
+void startOverdrive()
+{
+  log("start overdrive!");
+  isOverdrive = true;
+  remainingOverdriveLoopCount = overdriveLoopCount;
+  choseRandomSequence();
+  tickEnd();
 }
 
 //void solid();
@@ -260,8 +314,6 @@ void updateSeq(float seqValues[])
   }
 }
 
-//void setIntensity
-
 void pong()
 {
   tick();
@@ -298,7 +350,6 @@ void solid()
   uint32_t color = strip.Color(c * redValue, c * greenValue, c * blueValue);
   setColorToAll(color);
 }
-
 
 void rainbow(int segmentLength)
 {
@@ -411,8 +462,8 @@ void tick()
 
 void tick(int cap)
 {
-  float a = acceleration * float(index) / cap;
-  indexFloat += incrementStep + a;
+  float a = getAcceleration() * float(index) / cap;
+  indexFloat += getIncrementStep() + a;
   index = round(indexFloat);
   //index += (int)incrementStep;
   if (index >= cap)
@@ -421,17 +472,60 @@ void tick(int cap)
   }
 }
 
+float getAcceleration()
+{
+  if (isOverdrive)
+  {
+    return overdriveAcceleration;
+  }
+  return acceleration;
+}
+
+int getIncrementStep()
+{
+  return isOverdrive ? 3 : 1;
+}
+
 void tickEnd()
 {
+  log("tick end");
   updateColorSeqEnd(colorMode);
   tickCount++;
   index = 0;
   indexFloat = 0;
 
+  if (isOverdrive)
+  {
+    remainingOverdriveLoopCount -= 1;
+    if (remainingOverdriveLoopCount < 0)
+    {
+      log("overdrive end");
+      isOverdrive = false;
+      choseRandomSequence();
+    }
+
+    return;
+  }
+
   if (mode == 255
       && tickCount % switchAutoModeTick == 0)
   {
-    randomMode = random(seqCount);
+    choseRandomSequence();
+  }
+}
+
+void choseRandomSequence()
+{
+  if (seqCount <= 1) return;
+
+  while (true)
+  {
+    int newMode = random(seqCount);
+    if (newMode != randomMode)
+    {
+      randomMode = newMode;
+      break;
+    }
   }
 }
 
@@ -490,6 +584,10 @@ float inverseLerp(int a, int b, float c)
 
 void readDMX()
 {
+#if defined(DMX_ON)
+
+  if (!DMXSerial.receive()) return;
+  
   byte brightnessValue = DMXSerial.read(0 + DMXSTART);
   brightness = brightnessValue / 255.0;
   
@@ -508,4 +606,6 @@ void readDMX()
   {
     digitalWrite(LED_BUILTIN, LOW);
   }
+
+#endif
 }
