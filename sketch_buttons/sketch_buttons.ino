@@ -1,5 +1,8 @@
-#define AUDIO_IN A0
+//#define IS_SLAVE
+
 #define BUTTON_IN 2
+#define SIGNAL_OUT 3
+#define SIGNAL_IN 5
 
 void setup() {
   Serial.begin(9600);
@@ -7,26 +10,36 @@ void setup() {
   pinMode(BUTTON_IN, INPUT);
   pinMode(LED_BUILTIN, OUTPUT);
 
+#if defined(IS_SLAVE)
+  pinMode(SIGNAL_IN, INPUT);
+#else
+  pinMode(SIGNAL_OUT, OUTPUT);
+#endif
+
 }
 
 void loop() {
 
-
+#if defined(IS_SLAVE)
+  int buttonState = digitalRead(SIGNAL_IN);
+#else
   int buttonState = digitalRead(BUTTON_IN);
+#endif
   //Serial.println(buttonState);
 
   if (buttonState == HIGH) {
-    // turn LED on:
     digitalWrite(LED_BUILTIN, HIGH);
+
+#if !defined(IS_SLAVE)
+    digitalWrite(SIGNAL_OUT, HIGH);
+#endif
   } else {
     // turn LED off:
     digitalWrite(LED_BUILTIN, LOW);
+#if !defined(IS_SLAVE)
+    digitalWrite(SIGNAL_OUT, LOW);
+#endif
   }
-
-
-  int sensorValue = analogRead(AUDIO_IN);
-  // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
-  float voltage = sensorValue * (5.0 / 1023.0);
-  // print out the value you read:
-  Serial.println(voltage);
+  
+  //digitalWrite(LED_BUILTIN, HIGH);
 }
