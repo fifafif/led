@@ -1,4 +1,7 @@
 #include "sequences.h"
+#include <Arduino.h>
+
+#define PI 3.14159
 
 float easeIn(float t)
 {
@@ -8,6 +11,16 @@ float easeIn(float t)
 float easeOut(float t)
 {
   return 1 - (1 - t) * (1 - t);
+}
+
+float easeOutSine(float t) 
+{
+    return sin((t * PI) / 2);
+}
+
+float easeOutCircle(float t) 
+{
+    return sqrt(1 - pow(t - 1, 2));
 }
 
 float clamp01(float t)

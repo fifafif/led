@@ -1,5 +1,9 @@
 //#define DMX_ON
-#define LED_SIM_ONLY
+//#define LED_SIM_ONLY
+
+#if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
+#define LED_NEOPIXEL
+#endif
 
 #if defined(DMX_ON)
 
@@ -11,7 +15,11 @@
 
 #if !defined(LED_SIM_ONLY)
 
+#if defined(LED_NEOPIXEL)
 #include <Adafruit_NeoPixel.h>
+#else
+#include <LiteLED.h>
+#endif
 
 #endif
 
@@ -30,7 +38,13 @@
 #if defined(LED_SIM_ONLY)
 uint32_t strip[NUMPIXELS] = {};
 #else
+
+#if defined(LED_NEOPIXEL)
 Adafruit_NeoPixel strip(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+#else
+LiteLED strip(LED_STRIP_WS2812, 0);
+#endif
+
 #endif
 
 byte redValue = 255;
@@ -62,7 +76,6 @@ byte switchAutoModeTick = 8;
 bool isTickEnd = true;
 int tickStartMs;
 float normalizedTickTime;
-
 
 // Color
 byte colorMode = 1;
@@ -96,7 +109,14 @@ void setup ()
 #endif   
   
 #if !defined(LED_SIM_ONLY)
+
+#if defined(LED_NEOPIXEL)
   strip.begin();
+#else
+  strip.brightness(255);
+  strip.begin(PIN, NUMPIXELS);
+#endif
+
 #else
   brightness = 1;
 #endif
@@ -114,14 +134,13 @@ void loop()
   //updateSeq();
   
   //testSequence();
+  //firebolt();
   fireworks();
   //centerWave(60);
-  //drops(20);
+  //drops(60);
   //updateMode(mode);
  
 #if defined(LED_SIM_ONLY)
-
-  //testAscii();
   logStrip();
   delay(10);
 #else
@@ -129,6 +148,33 @@ void loop()
 #endif
 
   //delay(delayTicks);
+}
+
+void firebolt()
+{
+  /*tickStepTime(1.0);
+  if (normalizedTickTime >= 1)
+  {
+    tickStepTimeEnd();
+    //return;
+  }
+  */
+  ledIndex = easeOut(normalizedTickTime) * NUMPIXELS;
+
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    float c = inverseLerp(ledIndex - 80, ledIndex, i); 
+    if (i > ledIndex)
+    {
+      c = 0;
+    }
+    else
+    {
+      //c *= random(100) * 0.01;
+    }
+
+    setPixelColor(i, clamp01(c));
+  }
 }
 
 void fireworks()
@@ -155,7 +201,7 @@ void fireworksStep1()
     return;
   }
   
-  ledIndex = easeOut(normalizedTickTime) * NUMPIXELS;
+  ledIndex = easeOutSine(normalizedTickTime) * NUMPIXELS;
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
@@ -170,7 +216,7 @@ void fireworksStep1()
 
 void fireworksStep2()
 {
-  tickStepTime(0.1);
+  tickStepTime(0.15);
   if (normalizedTickTime >= 1)
   {
     tickStepTimeEnd();
@@ -246,7 +292,6 @@ void startOverdrive()
 void updateSeq()
 {
   int s = int(seqCount) * 255 / mode;
-
   if (s == seqCount)
   {
     s = randomMode;
@@ -255,53 +300,18 @@ void updateSeq()
   
   switch(s)
   {
-    case 0:
-      solid();
-      break;
-
-    case 1:
-      pulse(40);
-      break;
-
-    case 2:
-      stroboFade(10);
-      break;
-
-    case 3:
-      pong();
-      break;
-
-    case 4:
-      drops(20);
-      break;
-
-    case 5:
-      pingPong(20);
-      break;
-
-    case 6:
-      wavesSeq();
-      break;
-
-    case 7:
-      wavesHalfSeq();
-      break;
-
-    case 8:
-      wavesSqrtSeq();
-      break;
-
-    case 9:
-      wavesHardSeq();
-      break;
-
-    case 10:
-      rainbow(60);
-      break;  
-
-    case 11:
-      rainbow(20);
-      break;
+    case 0: solid(); break;
+    case 1: pulse(40); break;
+    case 2: stroboFade(10); break;
+    case 3: pong(); break;
+    case 4: drops(20); break;
+    case 5: pingPong(20); break;
+    case 6: wavesSeq(); break;
+    case 7: wavesHalfSeq(); break;
+    case 8: wavesSqrtSeq(); break;
+    case 9: wavesHardSeq(); break;
+    case 10: rainbow(60); break;  
+    case 11: rainbow(20); break;
   }
 }
 
@@ -407,38 +417,6 @@ void updateSeq(float seqValues[])
 
     setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
   }
-}
-
-uint32_t getColor(float r, float g, float b)
-{
-#if defined(LED_SIM_ONLY)
-  return (255<<24) + (int(round(r))<<16) + (int(round(g))<<8) + int(round(b));
-#else
-  return strip.Color(r, g, b);
-#endif
-}
-
-void setPixelColor(int i, float c)
-{
-  setPixelColor(i, getColor(c * brightness * redValue, c * brightness * greenValue, c * brightness * blueValue));
-}
-
-void setPixelColor(int i, uint32_t color)
-{
-#if defined(LED_SIM_ONLY)
-  strip[i] = color;
-#else
-  strip.setPixelColor(i, color);
-#endif
-}
-
-uint32_t getPixelColor(int i)
-{
-#if defined(LED_SIM_ONLY)
-  return strip[i];
-#else
-  return strip.getPixelColor(i);
-#endif
 }
 
 void pong()
@@ -783,7 +761,7 @@ void readDMX()
 #endif
 }
 
-void tickStepTime(float stepDuration)
+bool tickStepTime(float stepDuration)
 {
   int ms = millis();
   int elapsedMs = ms - tickStartMs;
@@ -885,5 +863,45 @@ void log(char *messaage)
 {
 #if !defined(DMX_ON)
   Serial.println(messaage);
+#endif
+}
+
+uint32_t getColor(float r, float g, float b)
+{
+  return (255<<24) + (int(round(r))<<16) + (int(round(g))<<8) + int(round(b));
+}
+
+void setPixelColor(int i, float c)
+{
+  setPixelColor(i, getColor(c * brightness * redValue, c * brightness * greenValue, c * brightness * blueValue));
+}
+
+void setPixelColor(int i, uint32_t color)
+{
+#if defined(LED_SIM_ONLY)
+  strip[i] = color;
+#else
+
+#if defined(LED_NEOPIXEL)
+  strip.setPixelColor(i, color);
+#else
+  strip.setPixel(i, color, 0);
+#endif
+
+#endif
+}
+
+uint32_t getPixelColor(int i)
+{
+#if defined(LED_SIM_ONLY)
+  return strip[i];
+#else
+
+#if defined(LED_NEOPIXEL)
+  return strip.getPixelColor(i);
+#else
+  return 0;
+#endif
+
 #endif
 }
