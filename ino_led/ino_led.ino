@@ -1,4 +1,5 @@
 //#define DMX_ON
+#define LED_SIM_ONLY
 
 #if defined(DMX_ON)
 
@@ -8,7 +9,12 @@
 
 #endif
 
+#if !defined(LED_SIM_ONLY)
+
 #include <Adafruit_NeoPixel.h>
+
+#endif
+
 #include "sequences.h"
 
 #define PIN        4
@@ -18,8 +24,14 @@
 #define DMXSTART 139
 #define DMXLENGTH (512)
 #define BUTTON_IN 2
+#define PI 3.14159
+#define PI2 2 * PI
 
+#if defined(LED_SIM_ONLY)
+uint32_t strip[NUMPIXELS] = {};
+#else
 Adafruit_NeoPixel strip(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+#endif
 
 byte redValue = 255;
 byte greenValue = 255;
@@ -44,9 +56,13 @@ int seqLength = 60;
 float acceleration = 3;
 byte incrementStep = 1;
 int tickCount = 0;
-int index;
-float indexFloat = 0;
+int ledIndex;
+float ledIndexFloat = 0;
 byte switchAutoModeTick = 8;
+bool isTickEnd = true;
+int tickStartMs;
+float normalizedTickTime;
+
 
 // Color
 byte colorMode = 1;
@@ -55,7 +71,9 @@ byte colorStepCount = 6;
 int colorIndex = 0;
 
 // Sequences
+byte stripValues[NUMPIXELS] = {};
 int fill = 0;
+int sequenceStep;
 
 // Overdrive
 bool isOverdrive;
@@ -73,11 +91,15 @@ void setup ()
   DMXSerial.init(DMXProbe);
   DMXSerial.maxChannel(DMXLENGTH);
 #else
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.write("LED Start");
 #endif   
   
+#if !defined(LED_SIM_ONLY)
   strip.begin();
+#else
+  brightness = 1;
+#endif
 }
 
 void loop() 
@@ -87,20 +109,111 @@ void loop()
   colorMode = 1;
 
   readOverrideButton();
-  tick();
+  //tick();
   updateColorTick(colorMode);
-  updateSeq();
+  //updateSeq();
+  
+  //testSequence();
+  fireworks();
+  //centerWave(60);
+  //drops(20);
   //updateMode(mode);
  
+#if defined(LED_SIM_ONLY)
+
+  //testAscii();
+  logStrip();
+  delay(10);
+#else
   strip.show();
+#endif
+
   //delay(delayTicks);
 }
 
-void log(char *messaage)
+void fireworks()
 {
-#if !defined(DMX_ON)
-  Serial.println(messaage);
-#endif
+  switch (sequenceStep)
+  {
+    case 0: fireworksStep1(); break;
+    case 1: fireworksStep2(); break;
+    case 2: fireworksStep3(); break;
+  }
+}
+
+void fireworksStep1()
+{
+  tickStepTime(1.0);
+  if (normalizedTickTime >= 1)
+  {
+    tickStepTimeEnd();
+    for (int i = 0; i < NUMPIXELS; i++)
+    {
+      stripValues[i] = random(255);
+    }
+    sequenceStep = 1;
+    return;
+  }
+  
+  ledIndex = easeOut(normalizedTickTime) * NUMPIXELS;
+
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    float c = inverseLerp(ledIndex - 60, ledIndex, i); 
+    if (i > ledIndex)
+    {
+      c = 0;
+    }
+    setPixelColor(i, clamp01(c));
+  }
+}
+
+void fireworksStep2()
+{
+  tickStepTime(0.1);
+  if (normalizedTickTime >= 1)
+  {
+    tickStepTimeEnd();
+    sequenceStep = 2;
+    return;
+  }
+  
+  ledIndex = NUMPIXELS - easeOut(normalizedTickTime) * NUMPIXELS;
+
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    float c = inverseLerp(ledIndex - 30, ledIndex, i); 
+    setPixelColor(i, c);
+  }
+}
+
+void fireworksStep3()
+{
+  tickStepTime(2);
+
+  if (normalizedTickTime >= 1)
+  {
+    tickStepTimeEnd();
+    sequenceStep = 0;
+    return;
+  }
+
+  float exploTime = normalizedTickTime * 4;
+  float exploFactor = easeOut(1 - clamp01(exploTime));
+
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    byte value = stripValues[i];
+    value -= 10;
+    stripValues[i] = value;
+  
+    float c = 1.0 * value / 255;
+    c *= easeIn(1 - normalizedTickTime);
+
+    c = lerp(c, 1.0, exploFactor);
+
+    setPixelColor(i, c);
+  }
 }
 
 void readOverrideButton()
@@ -115,10 +228,8 @@ void readOverrideButton()
   lastOverdriveButtonState = buttonState;
 
   if (buttonState == HIGH) {
-    // turn LED on:
     digitalWrite(LED_BUILTIN, HIGH);
   } else {
-    // turn LED off:
     digitalWrite(LED_BUILTIN, LOW);
   }
 }
@@ -131,11 +242,6 @@ void startOverdrive()
   choseRandomSequence();
   tickEnd();
 }
-
-//void solid();
-//void pulse(int x);
-//typedef void (*sequenceMap) (void);
-//sequenceMap bla[] = {solid, pulse};
 
 void updateSeq()
 {
@@ -228,18 +334,7 @@ void updateColorTick(byte colorMode)
   }
   else if (colorMode == 2)
   {
-    rgbFromWheel(index);
-  }
-}
-
-void fillUp()
-{
-  tick();
-
-  int rest = NUMPIXELS - fill;
-  for (int i = 0; i < fill; ++i)
-  {
-    
+    rgbFromWheel(ledIndex);
   }
 }
 
@@ -300,8 +395,8 @@ void updateSeq(float seqValues[])
   
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    //int ii = (i + index) % NUMPIXELS;
-    int ii = i - index;
+    //int ii = (i + ledIndex) % NUMPIXELS;
+    int ii = i - ledIndex;
     if (ii < 0)
     {
       ii += NUMPIXELS;
@@ -310,8 +405,40 @@ void updateSeq(float seqValues[])
     float c = seqValues[ii % seqLength];
     c *= brightness;
 
-    strip.setPixelColor(i, strip.Color(c * redValue, c * greenValue, c * blueValue));
+    setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
   }
+}
+
+uint32_t getColor(float r, float g, float b)
+{
+#if defined(LED_SIM_ONLY)
+  return (255<<24) + (int(round(r))<<16) + (int(round(g))<<8) + int(round(b));
+#else
+  return strip.Color(r, g, b);
+#endif
+}
+
+void setPixelColor(int i, float c)
+{
+  setPixelColor(i, getColor(c * brightness * redValue, c * brightness * greenValue, c * brightness * blueValue));
+}
+
+void setPixelColor(int i, uint32_t color)
+{
+#if defined(LED_SIM_ONLY)
+  strip[i] = color;
+#else
+  strip.setPixelColor(i, color);
+#endif
+}
+
+uint32_t getPixelColor(int i)
+{
+#if defined(LED_SIM_ONLY)
+  return strip[i];
+#else
+  return strip.getPixelColor(i);
+#endif
 }
 
 void pong()
@@ -323,22 +450,22 @@ void pong()
   
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    int ii = (i + index) % NUMPIXELS;
+    int ii = (i + ledIndex) % NUMPIXELS;
     float c;
     
     if (isUp)
     { 
-      c = 1 - inverseLerp(index, index + tailLength, i); 
+      c = 1 - inverseLerp(ledIndex, ledIndex + tailLength, i); 
     }
     else
     {
-      int inv = NUMPIXELS - index;
+      int inv = NUMPIXELS - ledIndex;
       c = 1 - inverseLerp(inv, inv + tailLength, i); 
     }
     
     c *= brightness;
 
-    strip.setPixelColor(i, strip.Color(c * redValue, c * greenValue, c * blueValue));
+    setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
   }
 }
 
@@ -347,7 +474,7 @@ void solid()
   tick();
 
   float c = brightness;
-  uint32_t color = strip.Color(c * redValue, c * greenValue, c * blueValue);
+  uint32_t color = getColor(c * redValue, c * greenValue, c * blueValue);
   setColorToAll(color);
 }
 
@@ -357,10 +484,10 @@ void rainbow(int segmentLength)
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    int ii = (i + index) % NUMPIXELS;
+    int ii = (i + ledIndex) % NUMPIXELS;
     byte c = 255.0 * i / segmentLength;
 
-    strip.setPixelColor(ii, wheel(c, brightness));
+    setPixelColor(ii, wheel(c, brightness));
   }
 }
 
@@ -370,13 +497,13 @@ void rainbowWaves(int segmentLength)
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    int ii = (i + index) % NUMPIXELS;
+    int ii = (i + ledIndex) % NUMPIXELS;
     byte c = 255.0 * i / segmentLength;
 
-    float b = 1.0 * index / NUMPIXELS;
+    float b = 1.0 * ledIndex / NUMPIXELS;
     b = sin(b * 3.1459);
 
-    strip.setPixelColor(ii, wheel(c, b * brightness));
+    setPixelColor(ii, wheel(c, b * brightness));
   }
 }
 
@@ -385,13 +512,69 @@ void drops(int segmentLength)
   tick();
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    int ii = (i + index) % NUMPIXELS;
+    int ii = (i + ledIndex) % NUMPIXELS;
     int segmentCount = NUMPIXELS / segmentLength;
     int o = ii / segmentCount;
     float c = 1.0 * (i % segmentLength) / segmentLength;
     c *= brightness;
 
-    strip.setPixelColor(ii, strip.Color(c * redValue, c * greenValue, c * blueValue));
+    setPixelColor(ii, getColor(c * redValue, c * greenValue, c * blueValue));
+  }
+}
+
+void centerWave(int segmentLength)
+{
+  tick();
+
+  int segmentCount = NUMPIXELS / segmentLength;
+  for (int i = 0; i < CENTERPIX; i++)
+  {
+    int ii = (i + ledIndex) % CENTERPIX;
+    float c = sin(PI * ii * segmentLength / CENTERPIX);
+    c = (c + 1) * 0.5; 
+    c *= sin(PI * i / CENTERPIX);
+    c *= brightness;
+
+    setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
+  }
+
+  copyHalfStrip();
+}
+
+void randomSparks(int segmentLength)
+{
+  if (isTickEnd)
+  {
+    isTickEnd = false;
+    for (int i = 0; i < NUMPIXELS; i++)
+    {
+      stripValues[i] = random(255);
+    }
+  }
+
+  tick();
+
+  const byte speed = 30;
+
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    byte value = stripValues[i];
+    value -= speed;
+    stripValues[i] = value;
+  
+    float c = 1.0 * value / 255;
+    c *= brightness;
+
+    setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
+  }
+}
+
+
+void copyHalfStrip()
+{
+  for (int i = CENTERPIX; i < NUMPIXELS; i++)
+  {
+    setPixelColor(i, getPixelColor(NUMPIXELS - i));
   }
 }
 
@@ -399,33 +582,33 @@ void stroboFade(int fadeDurationTicks)
 {
   tick(fadeDurationTicks);
 
-  float c = 1 - 1.0 * index / fadeDurationTicks;
+  float c = 1 - 1.0 * ledIndex / fadeDurationTicks;
   c = 0.2 + c * 0.8;
   c *= brightness;
 
-  setColorToAll(strip.Color(c * redValue, c * greenValue, c * blueValue));
+  setColorToAll(getColor(c * redValue, c * greenValue, c * blueValue));
 }
 
 void strobo(int fadeDurationTicks)
 {
   tick(fadeDurationTicks);
 
-  float c = index * 2 / fadeDurationTicks;
+  float c = ledIndex * 2 / fadeDurationTicks;
   c *= brightness;
 
-  setColorToAll(strip.Color(c * redValue, c * greenValue, c * blueValue));
+  setColorToAll(getColor(c * redValue, c * greenValue, c * blueValue));
 }
 
 void pulse(int fadeDurationTicks)
 {
   tick(fadeDurationTicks);
 
-  float c = 1.0 * index / fadeDurationTicks;
+  float c = 1.0 * ledIndex / fadeDurationTicks;
   c = sin(c * 3.1459);
   c = 0.2 + c * 0.8;
   c *= brightness;
 
-  setColorToAll(strip.Color(c * redValue, c * greenValue, c * blueValue));
+  setColorToAll(getColor(c * redValue, c * greenValue, c * blueValue));
 }
 
 void pingPong(int segmentLength)
@@ -434,14 +617,14 @@ void pingPong(int segmentLength)
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    int ii = (i + index) % NUMPIXELS;
+    int ii = (i + ledIndex) % NUMPIXELS;
     int segmentCount = NUMPIXELS / segmentLength;
     int o = ii / segmentCount;
     //float c = 1.0 * (i % segmentLength) / segmentLength;
-    float c = i > index ? 1.0 : 0.0;
+    float c = i > ledIndex ? 1.0 : 0.0;
     c *= brightness;
 
-    strip.setPixelColor(i, strip.Color(c * redValue, c * greenValue, c * blueValue));
+    setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
   }
 }
 
@@ -451,7 +634,7 @@ void setColorToAll(uint32_t color)
 {
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    strip.setPixelColor(i, color);
+    setPixelColor(i, color);
   }
 }
 
@@ -462,14 +645,19 @@ void tick()
 
 void tick(int cap)
 {
-  float a = getAcceleration() * float(index) / cap;
-  indexFloat += getIncrementStep() + a;
-  index = round(indexFloat);
-  //index += (int)incrementStep;
-  if (index >= cap)
+  float a = getAcceleration() * float(ledIndex) / cap;
+  incrementLedIndex(getIncrementStep() + a);
+  //ledIndex += (int)incrementStep;
+  if (ledIndex >= cap)
   {
     tickEnd();
   }
+}
+
+void incrementLedIndex(float speed)
+{
+  ledIndexFloat += speed;
+  ledIndex = round(ledIndexFloat);
 }
 
 float getAcceleration()
@@ -491,8 +679,10 @@ void tickEnd()
   log("tick end");
   updateColorSeqEnd(colorMode);
   tickCount++;
-  index = 0;
-  indexFloat = 0;
+  ledIndex = 0;
+  ledIndexFloat = 0;
+  isTickEnd = true;
+  sequenceStep = 0;
 
   if (isOverdrive)
   {
@@ -534,14 +724,14 @@ void choseRandomSequence()
 uint32_t wheel(byte WheelPos, float brightness) {
   WheelPos = 255 - WheelPos;
   if (WheelPos < 85) {
-    return strip.Color((255 - WheelPos * 3) * brightness, 0, WheelPos * 3 * brightness);
+    return getColor((255 - WheelPos * 3) * brightness, 0, WheelPos * 3 * brightness);
   }
   if (WheelPos < 170) {
     WheelPos -= 85;
-    return strip.Color(0, (WheelPos * 3) * brightness, (255 - WheelPos * 3) * brightness);
+    return getColor(0, (WheelPos * 3) * brightness, (255 - WheelPos * 3) * brightness);
   }
   WheelPos -= 170;
-  return strip.Color(WheelPos * 3 * brightness, (255 - WheelPos * 3) * brightness, 0);
+  return getColor(WheelPos * 3 * brightness, (255 - WheelPos * 3) * brightness, 0);
 }
 
 void rgbFromWheel(byte WheelPos) {
@@ -563,23 +753,6 @@ void rgbFromWheel(byte WheelPos) {
   redValue = WheelPos * 3;
   greenValue = 255 - WheelPos;
   blueValue = 0;
-}
-
-float lerp(int a, int b, float t)
-{
-  if (t >= 1) return b; 
-  if (t <= 0) return a;
-  
-  return a + (b - a) * t;
-}
-
-float inverseLerp(int a, int b, float c)
-{
-  if (b == a) return 0;
-  if (c <= a) return 0;
-  if (c >= b) return 1;
-  
-  return (c - a) / (b - a);
 }
 
 void readDMX()
@@ -607,5 +780,110 @@ void readDMX()
     digitalWrite(LED_BUILTIN, LOW);
   }
 
+#endif
+}
+
+void tickStepTime(float stepDuration)
+{
+  int ms = millis();
+  int elapsedMs = ms - tickStartMs;
+  normalizedTickTime = elapsedMs / (stepDuration * 1000);
+  ledIndex = (int)(normalizedTickTime * NUMPIXELS);
+}
+
+void tickStepTimeEnd()
+{
+  log("tick step time end");
+  ledIndex = 0;
+  normalizedTickTime = 0;
+  tickStartMs = millis();
+}
+
+void testAscii()
+{
+  int steps = 10;
+  for (int i = 0; i < steps; i++)
+  {
+    byte brightness = (byte)(i * 255 / (steps - 1)); 
+    Serial.print(brightnessToAscii(brightness));
+  }
+  
+  Serial.println("end test");
+}
+
+void testSequence()
+{
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    setPixelColor(i, getColor(128, 0, 0));
+  }
+}
+
+void logStrip()
+{
+#if defined(LED_SIM_ONLY) 
+
+  int width = 100;
+  float step = 1.0 * NUMPIXELS / width;
+  int ledIndex = 0;
+  float ledIndexFloat = 0;
+
+  Serial.print("[");
+
+  for (int i = 0; i < width; i++)
+  {
+    ledIndexFloat += step;
+    int prevIndex = ledIndex;
+    ledIndex = (int)round(ledIndexFloat);
+    int brightness = 0;
+
+    for (int j = prevIndex; j < ledIndex; j++)
+    {
+      uint32_t color = strip[j];
+      int v = (color >> 16) & 0xff; // red
+      v = max(v, (int)((color >> 8) & 0xff)); // green
+      v = max(v, (int)(color & 0xff));
+      
+      /*int r = (color >> 16) & 0xff; // red
+      int g = (int)((color >> 8) & 0xff); // green
+      int b = (int)(color & 0xff);
+      int v = r + g + b;
+      v /= 3;*/
+
+      brightness += v;
+    }
+
+    brightness /= ledIndex - prevIndex;
+
+    Serial.print(brightnessToAscii((byte)brightness));
+    //Serial.print((byte)brightness);
+    //Serial.print("-");
+  }
+
+  Serial.println("]");
+
+#endif
+}
+
+char* brightnessToAscii(byte brightness)
+{
+  const int stepCount = 5;
+  // byte value = (byte)round(1.0 * brightness * (stepCount - 1) / 255);
+  byte value = brightness * (stepCount - 1) / 255;
+  switch (value)
+  {
+    case 0: return "_";
+    case 1: return "\u2591";
+    case 2: return "\u2592";
+    case 3: return "\u2593";
+    case 4: return "\u2588";
+    default: return "?";
+  }
+}
+
+void log(char *messaage)
+{
+#if !defined(DMX_ON)
+  Serial.println(messaage);
 #endif
 }
