@@ -5,6 +5,8 @@
 #define LED_NEOPIXEL
 #endif
 
+#include <Arduino.h>
+
 #if defined(DMX_ON)
 
 #include <DMXSerial.h>
@@ -74,7 +76,7 @@ int ledIndex;
 float ledIndexFloat = 0;
 byte switchAutoModeTick = 8;
 bool isTickEnd = true;
-int tickStartMs;
+unsigned long tickStartMs;
 float normalizedTickTime;
 
 // Color
@@ -189,7 +191,7 @@ void fireworks()
 
 void fireworksStep1()
 {
-  tickStepTime(1.0);
+  tickStepTime(1.0f);
   if (normalizedTickTime >= 1)
   {
     tickStepTimeEnd();
@@ -761,10 +763,10 @@ void readDMX()
 #endif
 }
 
-bool tickStepTime(float stepDuration)
+void tickStepTime(float stepDuration)
 {
-  int ms = millis();
-  int elapsedMs = ms - tickStartMs;
+  unsigned long ms = getMs();
+  unsigned long elapsedMs = ms - tickStartMs;
   normalizedTickTime = elapsedMs / (stepDuration * 1000);
   ledIndex = (int)(normalizedTickTime * NUMPIXELS);
 }
@@ -774,7 +776,12 @@ void tickStepTimeEnd()
   log("tick step time end");
   ledIndex = 0;
   normalizedTickTime = 0;
-  tickStartMs = millis();
+  tickStartMs = getMs();
+}
+
+unsigned long getMs()
+{
+  return millis();
 }
 
 void testAscii()
@@ -900,7 +907,7 @@ uint32_t getPixelColor(int i)
 #if defined(LED_NEOPIXEL)
   return strip.getPixelColor(i);
 #else
-  return 0;
+  return strip.getPixel(i);
 #endif
 
 #endif
