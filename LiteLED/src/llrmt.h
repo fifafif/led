@@ -235,7 +235,7 @@ crgb_t led_strip_get_pixel_c( led_strip_t *strip, size_t num) {
     crgb_t color = 0;
     switch (led_params[strip->type].order) {
         case ORDER_GRB:
-            color = (strip->buf[idx] << 16) | (strip->buf[idx + 1] << 8) | strip->buf[idx + 2];
+            color = (strip->buf[idx + 1] << 16) | (strip->buf[idx] << 8) | strip->buf[idx + 2];
             break;
         case ORDER_RGB:
             color = (strip->buf[idx] << 16) | (strip->buf[idx + 1] << 8) | strip->buf[idx + 2];
