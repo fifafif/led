@@ -6,6 +6,7 @@ enum seqType
 };
 
 float easeIn(float t);
+float easeInSine(float t);
 float easeOut(float t);
 float easeOutSine(float t);
 float easeOutCircle(float t);

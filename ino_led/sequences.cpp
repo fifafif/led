@@ -8,6 +8,11 @@ float easeIn(float t)
   return t * t;
 }
 
+float easeInSine(float t)
+{
+  return 1 - cos((t * PI) * 0.5f);
+}
+
 float easeOut(float t)
 {
   return 1 - (1 - t) * (1 - t);

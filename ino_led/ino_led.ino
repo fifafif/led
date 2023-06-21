@@ -60,6 +60,9 @@ LiteLED strip(LED_STRIP_WS2812, 0);
 
 #endif
 
+
+const bool IS_USING_BEAT = false;
+
 byte redValue = 255;
 byte greenValue = 255;
 byte blueValue = 0;
@@ -68,30 +71,31 @@ byte blueValue = 0;
 byte redValueDMX = 255;
 byte greenValueDMX = 255;
 byte blueValueDMX = 0;
-float brightness = 0.1;
+float brightness = 0.5;
 byte stroboMode = 0;
 byte mode = 255;
 
 int delayTicks = 1;
 
-byte seqCount = 12;
+byte seqCount = 17;
 byte overdriveSeqCount = 1;
 byte randomMode = 0;
 
 // Time
 byte speed = 127;
 int seqLength = 60;
-float acceleration = 3;
+float acceleration = 1;
 byte incrementStep = 1;
 int tickCount = 0;
 int ledIndex;
 float ledIndexFloat = 0;
 byte switchAutoModeEveryTickCount = 8;
 bool isTickEnd = true;
-unsigned long tickStartMs;
+unsigned long stepStartMs;
 float normalizedStepTime;
 int ticksSinceLastBeat = 666;
 int lastBeatState;
+int stepTicks;
 
 // Color
 byte colorMode = 1;
@@ -172,11 +176,11 @@ void loop()
 
 void readBeat()
 {
-  ticksSinceLastBeat += 1;
+  if (!IS_USING_BEAT) return;
 
+  ticksSinceLastBeat += 1;
   int beatState = digitalRead(BEAT_IN);
   digitalWrite(LED_ONBOARD, beatState);
-  //Serial.println("beat " + beatState);
   if (beatState == HIGH
       && beatState != lastBeatState)
   {
@@ -189,13 +193,91 @@ void readBeat()
 void beat()
 {
   log("beat!");
+
+  if (isOverdrive) return;
+  if (getMs() - stepStartMs < 200) return;
+
   ticksSinceLastBeat = 0;
-  tickEnd();
+  sequenceEnd();
 }
+
+void readOverrideButton()
+{
+  int buttonState = digitalRead(BUTTON_IN);
+  if (buttonState == HIGH
+      && buttonState != lastOverdriveButtonState)
+  {
+    startOverdrive();  
+  }
+
+  lastOverdriveButtonState = buttonState;
+
+/*
+  if (buttonState == HIGH) {
+    digitalWrite(LED_BUILTIN, HIGH);
+  } else {
+    digitalWrite(LED_BUILTIN, LOW);
+  }*/
+}
+
+void startOverdrive()
+{
+  log("start overdrive!");
+  sequenceEnd();
+  startStepTime();
+  isOverdrive = true;
+  remainingOverdriveLoopCount = overdriveLoopCount;
+  choseRandomOverdrive();  
+}
+
+void updateSeqOverdrive()
+{
+  int s = randomMode;
+  
+  switch(s)
+  {
+    case 0: fireworks(); break;
+  }
+}
+
+void updateSeq()
+{
+  int s = int(seqCount) * 255 / mode;
+  if (s == seqCount)
+  {
+    s = randomMode;
+  }
+  s = 11;
+  
+  switch(s)
+  {
+    case 0: solid(); break;
+    case 1: pulse(40); break;
+    case 2: stroboFade(10); break;
+    case 3: slowGrow(); break;
+    //case 4: drops(20); break;
+    case 5: pingPong(20); break; // fix
+    case 6: wavesSeq(); break;
+    case 7: wavesHalfSeq(); break; // fix
+    case 8: wavesSqrtSeq(); break;
+    case 9: wavesHardSeq(); break;
+    case 10: rainbow(60); break;  
+    case 11: rainbow(900); break;
+    case 12: dropsTime(30); break;
+    case 13: firebolt(100); break;
+    case 14: cylon(100); break;
+    case 15: centerWave(60); break;
+    case 16: randomSparks(60); break; 
+  }
+}
+
+// ===============================================================================================
+// ============================================= SEQUENCES =======================================
+// ===============================================================================================
 
 void dropsTime(int segmentLength)
 {
-  updateTime(2.0f);
+  updateStepTime(2.0f);
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
@@ -208,11 +290,7 @@ void dropsTime(int segmentLength)
 
 void cylon(int length)
 {
-  if (updateTime(2.0f))
-  {
-    tickEnd();
-    return;
-  }
+  if (updateStepTime(2.0f, true)) return;
 
   bool isReverse = normalizedStepTime > 0.5;
   if (isReverse)
@@ -249,7 +327,7 @@ void firebolt(int length)
     generateRandomStripValues();
   }
 
-  if (updateTime(2.0f, true)) return;
+  if (updateStepTime(2.0f, true)) return;
 
   ledIndex = easeOut(normalizedStepTime) * NUMPIXELS;
 
@@ -285,7 +363,7 @@ void fireworks()
 
 void fireworksStep1()
 {
-  if (updateTime(1.0f))
+  if (updateStepTime(1.0f))
   {
     generateRandomStripValues();
     return;
@@ -306,7 +384,7 @@ void fireworksStep1()
 
 void fireworksStep2()
 {
-  if (updateTime(0.15)) return;
+  if (updateStepTime(0.15)) return;
   
   ledIndex = NUMPIXELS - easeOut(normalizedStepTime) * NUMPIXELS;
 
@@ -319,11 +397,7 @@ void fireworksStep2()
 
 void fireworksStep3()
 {
-  if (updateTime(2))
-  {
-    tickEnd();
-    return;
-  }
+  if (updateStepTime(2, true)) return;
 
   float exploTime = normalizedStepTime * 4;
   float exploFactor = easeOut(1 - clamp01(exploTime));
@@ -340,110 +414,6 @@ void fireworksStep3()
     c = lerp(c, 1.0, exploFactor);
 
     setPixelColor(i, c);
-  }
-}
-
-void readOverrideButton()
-{
-  int buttonState = digitalRead(BUTTON_IN);
-  if (buttonState == HIGH
-      && buttonState != lastOverdriveButtonState)
-  {
-    startOverdrive();  
-  }
-
-  lastOverdriveButtonState = buttonState;
-
-/*
-  if (buttonState == HIGH) {
-    digitalWrite(LED_BUILTIN, HIGH);
-  } else {
-    digitalWrite(LED_BUILTIN, LOW);
-  }*/
-}
-
-void startOverdrive()
-{
-  log("start overdrive!");
-  tickEnd();
-  startStepTime();
-  isOverdrive = true;
-  remainingOverdriveLoopCount = overdriveLoopCount;
-  choseRandomOverdrive();  
-}
-
-void updateSeqOverdrive()
-{
-  int s = randomMode;
-  
-  switch(s)
-  {
-    case 0: fireworks(); break;
-  }
-}
-
-void updateSeq()
-{
-  int s = int(seqCount) * 255 / mode;
-  if (s == seqCount)
-  {
-    s = randomMode;
-  }
-  s = 16;
-  
-  switch(s)
-  {
-    case 0: solid(); break;
-    case 1: pulse(40); break;
-    case 2: stroboFade(10); break;
-    case 3: pong(); break;
-    case 4: drops(20); break;
-    case 5: pingPong(20); break;
-    case 6: wavesSeq(); break;
-    case 7: wavesHalfSeq(); break;
-    case 8: wavesSqrtSeq(); break;
-    case 9: wavesHardSeq(); break;
-    case 10: rainbow(60); break;  
-    case 11: rainbow(20); break;
-    case 12: dropsTime(30); break;
-    case 13: firebolt(100); break;
-    case 14: cylon(100); break;
-    case 15: centerWave(60); break;
-    case 16: randomSparks(60); break;
-    
-  }
-}
-
-void updateColorSeqEnd(byte colorMode)
-{
-  if (colorMode == 3)
-  {
-    colorIndex += 1;
-    if (colorIndex > colorStepCount)
-    {
-      colorIndex = 0;
-    }
-    rgbFromWheel(colorIndex * 255 / colorStepCount);
-  }
-  else if (colorMode == 1)
-  {
-    rgbFromWheel(random(255));
-  }
-}
-
-// DMX = 0, Rnd = 1, Wheel = 2, WheelStep = 3
-
-void updateColorTick(byte colorMode)
-{
-  if (colorMode == 0)
-  {
-    redValue = redValueDMX;
-    greenValue = greenValueDMX;
-    blueValue = blueValueDMX;
-  }
-  else if (colorMode == 2)
-  {
-    rgbFromWheel(ledIndex);
   }
 }
 
@@ -500,11 +470,12 @@ void wavesHardSeq()
 
 void updateSeq(float seqValues[])
 {
-  tick();
+  updateStepTime(6.0f, true);
+
+  ledIndex = easeInSine(normalizedStepTime) * NUMPIXELS;
   
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    //int ii = (i + ledIndex) % NUMPIXELS;
     int ii = i - ledIndex;
     if (ii < 0)
     {
@@ -512,18 +483,25 @@ void updateSeq(float seqValues[])
     }
    
     float c = seqValues[ii % seqLength];
-    c *= brightness;
 
-    setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
+    setPixelColor(i, c);
   }
 }
 
-void pong()
+void slowGrow()
 {
-  tick();
+  if (updateStepTime(3.0f, 2, false)) return;
   
   byte tailLength = 30;
   bool isUp = tickCount % 2 == 0;
+  if (isUp)
+  {
+    ledIndex = easeIn(normalizedStepTime) * NUMPIXELS;
+  }
+  else
+  {
+    ledIndex = easeOut(normalizedStepTime) * NUMPIXELS;
+  }
   
   for (int i = 0; i < NUMPIXELS; i++)
   {
@@ -540,15 +518,13 @@ void pong()
       c = 1 - inverseLerp(inv, inv + tailLength, i); 
     }
     
-    c *= brightness;
-
-    setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
+    setPixelColor(i, c);
   }
 }
 
 void solid()
 {
-  tick();
+  updateStepTime(1.0f, true);
 
   float c = brightness;
   uint32_t color = getColor(c * redValue, c * greenValue, c * blueValue);
@@ -557,11 +533,11 @@ void solid()
 
 void rainbow(int segmentLength)
 {
-  tick();
+  updateStepTime(4.0f, true);
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
-    int ii = (i + ledIndex) % NUMPIXELS;
+    int ii = (i + stepTicks) % NUMPIXELS;
     byte c = 255.0 * i / segmentLength;
 
     setPixelColor(ii, wheel(c, brightness));
@@ -570,7 +546,7 @@ void rainbow(int segmentLength)
 
 void rainbowWaves(int segmentLength)
 {
-  tick();
+  updateStepTime(4.0f, true);
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
@@ -584,24 +560,9 @@ void rainbowWaves(int segmentLength)
   }
 }
 
-void drops(int segmentLength)
-{
-  tick();
-  for (int i = 0; i < NUMPIXELS; i++)
-  {
-    int ii = (i + ledIndex) % NUMPIXELS;
-    int segmentCount = NUMPIXELS / segmentLength;
-    int o = ii / segmentCount;
-    float c = 1.0 * (i % segmentLength) / segmentLength;
-    c *= brightness;
-
-    setPixelColor(ii, getColor(c * redValue, c * greenValue, c * blueValue));
-  }
-}
-
 void centerWave(int segmentLength)
 {
-  if (updateTime(3.0f, true)) return;
+  if (updateStepTime(3.0f, true)) return;
 
   for (int i = 0; i <= CENTERPIX; i++)
   {
@@ -623,7 +584,7 @@ void randomSparks(int segmentLength)
     generateRandomStripValues();
   }
 
-  updateTime(1.0f, true);
+  updateStepTime(1.0f, true);
 
   const byte speed = 3;
 
@@ -639,51 +600,36 @@ void randomSparks(int segmentLength)
   }
 }
 
-
-void copyHalfStrip()
-{
-  for (int i = CENTERPIX; i < NUMPIXELS; i++)
-  {
-    setPixelColor(i, getPixelColor(NUMPIXELS - i));
-  }
-}
-
 void stroboFade(int fadeDurationTicks)
 {
-  tick(fadeDurationTicks);
+  updateStepTime(1.0f, true);
 
-  float c = 1 - 1.0 * ledIndex / fadeDurationTicks;
+  float c = 1 - normalizedStepTime;
   c = 0.2 + c * 0.8;
-  c *= brightness;
-
-  setColorToAll(getColor(c * redValue, c * greenValue, c * blueValue));
+  setColorToAll(c);
 }
 
 void strobo(int fadeDurationTicks)
 {
-  tick(fadeDurationTicks);
+  updateStepTime(1.0f, true);
 
   float c = ledIndex * 2 / fadeDurationTicks;
-  c *= brightness;
-
-  setColorToAll(getColor(c * redValue, c * greenValue, c * blueValue));
+  setColorToAll(c);
 }
 
 void pulse(int fadeDurationTicks)
 {
-  tick(fadeDurationTicks);
+  updateStepTime(1.0f, true);
 
-  float c = 1.0 * ledIndex / fadeDurationTicks;
-  c = sin(c * 3.1459);
+  float c = normalizedStepTime;
+  c = sin(c * PI);
   c = 0.2 + c * 0.8;
-  c *= brightness;
-
-  setColorToAll(getColor(c * redValue, c * greenValue, c * blueValue));
+  setColorToAll(c);
 }
 
 void pingPong(int segmentLength)
 {
-  tick();
+  updateStepTime(1.0f, 2);
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
@@ -692,71 +638,19 @@ void pingPong(int segmentLength)
     int o = ii / segmentCount;
     //float c = 1.0 * (i % segmentLength) / segmentLength;
     float c = i > ledIndex ? 1.0 : 0.0;
-    c *= brightness;
 
-    setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
+    setPixelColor(i, c);
   }
 }
 
-// ==========================================================
+// ===============================================================================================
+// ============================================= TIME ============================================
+// ===============================================================================================
 
-void generateRandomStripValues()
+void sequenceEnd()
 {
-  for (int i = 0; i < NUMPIXELS; i++)
-  {
-    stripValues[i] = random(255);
-  }
-}
-
-void setColorToAll(uint32_t color)
-{
-  for (int i = 0; i < NUMPIXELS; i++)
-  {
-    setPixelColor(i, color);
-  }
-}
-
-void tick()
-{
-  tick(NUMPIXELS);  
-}
-
-void tick(int cap)
-{
-  float a = getAcceleration() * float(ledIndex) / cap;
-  incrementLedIndex(getIncrementStep() + a);
-  //ledIndex += (int)incrementStep;
-  if (ledIndex >= cap)
-  {
-    tickEnd();
-  }
-}
-
-void incrementLedIndex(float speed)
-{
-  ledIndexFloat += speed;
-  ledIndex = round(ledIndexFloat);
-}
-
-float getAcceleration()
-{
-  if (isOverdrive)
-  {
-    return overdriveAcceleration;
-  }
-  return acceleration;
-}
-
-int getIncrementStep()
-{
-  return isOverdrive ? 3 : 1;
-}
-
-void tickEnd()
-{
-  log("tick end");
+  log("sequence end");
   updateColorSeqEnd(colorMode);
-  tickCount++;
   ledIndex = 0;
   ledIndexFloat = 0;
   isTickEnd = true;
@@ -777,6 +671,69 @@ void tickEnd()
   }
 }
 
+bool updateStepTime(float stepDuration, int stepCount, bool isChangingColor)
+{
+  if (updateStepTime(stepDuration))
+  {
+    if (stepCount <= sequenceStep)
+    {
+      sequenceEnd();
+    }
+    else if (isChangingColor)
+    {
+      updateColorSeqEnd(colorMode);
+    }
+    return true;
+  }
+
+  return false;
+}
+
+bool updateStepTime(float stepDuration)
+{
+  return updateStepTime(stepDuration, false);
+}
+
+bool updateStepTime(float stepDuration, bool isLastStep)
+{
+  unsigned long ms = getMs();
+  unsigned long elapsedMs = ms - stepStartMs;
+  normalizedStepTime = elapsedMs / (stepDuration * 1000);
+  ledIndex = (int)(normalizedStepTime * NUMPIXELS) % NUMPIXELS;
+  isTickEnd = false;
+  stepTicks += 1;
+
+  if (normalizedStepTime >= 1)
+  {
+    stepTimeEnd();
+    if (isLastStep)
+    {
+      sequenceEnd();
+    }
+    return true;
+  }
+
+  return false;
+}
+
+void stepTimeEnd()
+{
+  String msg = "step end. ms=";
+  msg = msg + getMs();
+  log(msg);
+  startStepTime();
+  sequenceStep += 1;
+  tickCount += 1;
+}
+
+void startStepTime()
+{
+  ledIndex = 0;
+  stepTicks = 0;
+  normalizedStepTime = 0;
+  stepStartMs = getMs();
+}
+
 void choseRandomOverdrive()
 {
   randomMode = random(overdriveSeqCount);
@@ -795,75 +752,10 @@ void choseRandomSequence()
       break;
     }
   }
-}
 
-void readDMX()
-{
-#if defined(DMX_ON)
-
-  if (!DMXSerial.receive()) return;
-  
-  byte brightnessValue = DMXSerial.read(0 + DMXSTART);
-  brightness = brightnessValue / 255.0;
-  
-  redValueDMX = DMXSerial.read(1 + DMXSTART);
-  greenValueDMX = DMXSerial.read(2 + DMXSTART);
-  blueValueDMX = DMXSerial.read(3 + DMXSTART);
-  speed = DMXSerial.read(4 + DMXSTART);
-  mode = DMXSerial.read(5 + DMXSTART);
-  stroboMode = DMXSerial.read(6 + DMXSTART);
-  /*
-  if (brightness > 128)
-  {
-    digitalWrite(LED_BUILTIN, HIGH);
-  }
-  else
-  {
-    digitalWrite(LED_BUILTIN, LOW);
-  }*/
-
-#endif
-}
-bool updateTime(float stepDuration)
-{
-  return updateTime(stepDuration, false);
-}
-
-bool updateTime(float stepDuration, bool isLastStep)
-{
-  unsigned long ms = getMs();
-  unsigned long elapsedMs = ms - tickStartMs;
-  normalizedStepTime = elapsedMs / (stepDuration * 1000);
-  ledIndex = (int)(normalizedStepTime * NUMPIXELS) % NUMPIXELS;
-  isTickEnd = false;
-
-  if (normalizedStepTime >= 1)
-  {
-    stepTimeEnd();
-    if (isLastStep)
-    {
-      tickEnd();
-    }
-    return true;
-  }
-
-  return false;
-}
-
-void stepTimeEnd()
-{
-  String msg = "tick step time end. ms=";
-  msg = msg + getMs();
+  String msg = "new sequence: ";
+  msg += randomMode;
   log(msg);
-  startStepTime();
-  sequenceStep += 1;
-}
-
-void startStepTime()
-{
-  ledIndex = 0;
-  normalizedStepTime = 0;
-  tickStartMs = getMs();
 }
 
 unsigned long getMs()
@@ -919,7 +811,105 @@ uint32_t getPixelColor(int i)
 #endif
 }
 
+void copyHalfStrip()
+{
+  for (int i = CENTERPIX; i < NUMPIXELS; i++)
+  {
+    setPixelColor(i, getPixelColor(NUMPIXELS - i));
+  }
+}
+
 void rgbFromWheel(byte WheelPos)
 {
   rgbFromWheel(WheelPos, redValue, greenValue, blueValue);
 }
+
+void updateColorSeqEnd(byte colorMode)
+{
+  if (colorMode == 3)
+  {
+    colorIndex += 1;
+    if (colorIndex > colorStepCount)
+    {
+      colorIndex = 0;
+    }
+    rgbFromWheel(colorIndex * 255 / colorStepCount);
+  }
+  else if (colorMode == 1)
+  {
+    rgbFromWheel(random(255));
+  }
+}
+
+// DMX = 0, Rnd = 1, Wheel = 2, WheelStep = 3
+
+void updateColorTick(byte colorMode)
+{
+  if (colorMode == 0)
+  {
+    redValue = redValueDMX;
+    greenValue = greenValueDMX;
+    blueValue = blueValueDMX;
+  }
+  else if (colorMode == 2)
+  {
+    rgbFromWheel(ledIndex);
+  }
+}
+
+void readDMX()
+{
+#if defined(DMX_ON)
+
+  if (!DMXSerial.receive()) return;
+  
+  byte brightnessValue = DMXSerial.read(0 + DMXSTART);
+  brightness = brightnessValue / 255.0;
+  
+  redValueDMX = DMXSerial.read(1 + DMXSTART);
+  greenValueDMX = DMXSerial.read(2 + DMXSTART);
+  blueValueDMX = DMXSerial.read(3 + DMXSTART);
+  speed = DMXSerial.read(4 + DMXSTART);
+  mode = DMXSerial.read(5 + DMXSTART);
+  stroboMode = DMXSerial.read(6 + DMXSTART);
+  /*
+  if (brightness > 128)
+  {
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
+  else
+  {
+    digitalWrite(LED_BUILTIN, LOW);
+  }*/
+
+#endif
+}
+
+
+void generateRandomStripValues()
+{
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    stripValues[i] = random(255);
+  }
+}
+
+void setColorToAll(uint32_t color)
+{
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    setPixelColor(i, color);
+  }
+}
+
+void setColorToAll(float c)
+{
+  c *= brightness;
+  uint32_t color = getColor(c * redValue, c * greenValue, c * blueValue);
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    setPixelColor(i, color);
+  }
+}
+
+
