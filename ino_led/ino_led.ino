@@ -107,6 +107,8 @@ int colorIndex = 0;
 byte stripValues[NUMPIXELS] = {};
 int fill = 0;
 int sequenceStep;
+bool isBeatChangingColor;
+bool isBeatResettingSequence;
 
 // Overdrive
 bool isOverdrive;
@@ -198,7 +200,19 @@ void beat()
   if (getMs() - stepStartMs < 200) return;
 
   ticksSinceLastBeat = 0;
-  sequenceEnd();
+
+  if (isBeatResettingSequence)
+  {
+    stepTimeEnd();
+  }
+  else if (isBeatChangingColor)
+  {
+    changeColor();
+  }
+  else
+  {
+    sequenceEnd();
+  }
 }
 
 void readOverrideButton()
@@ -247,15 +261,15 @@ void updateSeq()
   {
     s = randomMode;
   }
-  s = 11;
+  s = 4;
   
   switch(s)
   {
     case 0: solid(); break;
     case 1: pulse(40); break;
     case 2: stroboFade(10); break;
-    case 3: slowGrow(); break;
-    //case 4: drops(20); break;
+    case 3: grow(0.5f); break;
+    case 4: grow(2.0f); break;
     case 5: pingPong(20); break; // fix
     case 6: wavesSeq(); break;
     case 7: wavesHalfSeq(); break; // fix
@@ -277,7 +291,7 @@ void updateSeq()
 
 void dropsTime(int segmentLength)
 {
-  updateStepTime(2.0f);
+  updateStepTime(4.0f, true);
 
   for (int i = 0; i < NUMPIXELS; i++)
   {
@@ -488,9 +502,12 @@ void updateSeq(float seqValues[])
   }
 }
 
-void slowGrow()
+void grow(float duration)
 {
-  if (updateStepTime(3.0f, 2, false)) return;
+  isBeatChangingColor = true;
+  isBeatResettingSequence = true;
+
+  if (updateStepTime(duration, 2, false)) return;
   
   byte tailLength = 30;
   bool isUp = tickCount % 2 == 0;
@@ -650,7 +667,7 @@ void pingPong(int segmentLength)
 void sequenceEnd()
 {
   log("sequence end");
-  updateColorSeqEnd(colorMode);
+  changeColor();
   ledIndex = 0;
   ledIndexFloat = 0;
   isTickEnd = true;
@@ -681,7 +698,7 @@ bool updateStepTime(float stepDuration, int stepCount, bool isChangingColor)
     }
     else if (isChangingColor)
     {
-      updateColorSeqEnd(colorMode);
+      changeColor();
     }
     return true;
   }
@@ -822,6 +839,11 @@ void copyHalfStrip()
 void rgbFromWheel(byte WheelPos)
 {
   rgbFromWheel(WheelPos, redValue, greenValue, blueValue);
+}
+
+void changeColor()
+{
+  updateColorSeqEnd(colorMode);
 }
 
 void updateColorSeqEnd(byte colorMode)
