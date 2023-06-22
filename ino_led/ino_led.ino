@@ -28,6 +28,7 @@
 
 #include "colors.h"
 #include "sequences.h"
+#include "serial_com.h"
 #include "debug.h"
 
 #if defined(ARDUINO_LOGIC)
@@ -51,17 +52,18 @@
 #if defined(LED_SIM_ONLY)
 uint32_t strip[NUMPIXELS] = {};
 #else
-
 #if defined(LED_NEOPIXEL)
 Adafruit_NeoPixel strip(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 #else
 LiteLED strip(LED_STRIP_WS2812, 0);
 #endif
-
 #endif
 
+// ============================================= CONFIG ==========================================
 
-const bool IS_USING_BEAT = false;
+const bool IS_SLAVE = true;
+const bool IS_OVERDRIVE_REACTIVE = true;
+const bool IS_BEAT_REACTIVE = false;
 
 byte redValue = 255;
 byte greenValue = 255;
@@ -98,10 +100,12 @@ int lastBeatState;
 int stepTicks;
 
 // Color
+// DMX = 0, Rnd = 1, Wheel = 2, WheelStep = 3, Serial = 4
 byte colorMode = 1;
 byte colorWheelStep = 255 / 6;
 byte colorStepCount = 6;
 int colorIndex = 0;
+byte colorWheelPosition;
 
 // Sequences
 byte stripValues[NUMPIXELS] = {};
@@ -117,6 +121,8 @@ int remainingOverdriveLoopCount;
 float overdriveAcceleration = 9;
 const int overdriveLoopCount = 3;
 
+// ============================================= MAIN ==========================================
+
 void setup () 
 {
   pinMode(LED_ONBOARD, OUTPUT);
@@ -130,21 +136,30 @@ void setup ()
   DMXSerial.maxChannel(DMXLENGTH);
 #else
   Serial.begin(115200);
-  Serial.write("LED Start");
+  Serial.println("LED Start!");
 #endif   
   
 #if !defined(LED_SIM_ONLY)
-
 #if defined(LED_NEOPIXEL)
   strip.begin();
 #else
   strip.brightness(255);
   strip.begin(LED_PIN, NUMPIXELS);
 #endif
-
 #else
   brightness = 1;
 #endif
+
+  setupSerial(IS_SLAVE);
+
+  if (IS_SLAVE)
+  {
+    colorMode = 4;
+  }
+  else
+  {
+    colorMode = 1;
+  }
 }
 
 void loop() 
@@ -152,9 +167,10 @@ void loop()
   readDMX();
   readBeat();
   readOverrideButton();
+  readSerial();
 
   // Manual color mode override.  
-  colorMode = 1;
+  //colorMode = 1;
   updateColorTick(colorMode);
   
   if (isOverdrive)
@@ -176,9 +192,37 @@ void loop()
   //delay(delayTicks);
 }
 
+void readSerial()
+{
+  if (readSerialMessage())
+  {
+    switch (getSerialMessageType())
+    {
+      case 0:
+        break;
+
+      case 1:
+        sequenceEnd(getSerialMessageSequence());
+        break;
+
+      case 2:
+        rgbFromWheel(getSerialMessageColor());
+        break;
+
+      case 3:
+        startOverdrive();
+        randomMode = getSerialMessageSequence();
+        break;
+
+    }
+    log("Message!");
+  }
+}
+
 void readBeat()
 {
-  if (!IS_USING_BEAT) return;
+  if (!IS_BEAT_REACTIVE
+      || IS_SLAVE) return;
 
   ticksSinceLastBeat += 1;
   int beatState = digitalRead(BEAT_IN);
@@ -208,6 +252,7 @@ void beat()
   else if (isBeatChangingColor)
   {
     changeColor();
+    writeSerialColor();
   }
   else
   {
@@ -217,6 +262,9 @@ void beat()
 
 void readOverrideButton()
 {
+  if (!IS_OVERDRIVE_REACTIVE
+      || IS_SLAVE) return;
+
   int buttonState = digitalRead(BUTTON_IN);
   if (buttonState == HIGH
       && buttonState != lastOverdriveButtonState)
@@ -225,13 +273,6 @@ void readOverrideButton()
   }
 
   lastOverdriveButtonState = buttonState;
-
-/*
-  if (buttonState == HIGH) {
-    digitalWrite(LED_BUILTIN, HIGH);
-  } else {
-    digitalWrite(LED_BUILTIN, LOW);
-  }*/
 }
 
 void startOverdrive()
@@ -242,6 +283,11 @@ void startOverdrive()
   isOverdrive = true;
   remainingOverdriveLoopCount = overdriveLoopCount;
   choseRandomOverdrive();  
+
+  if (!IS_SLAVE)
+  {
+    writeSerialMessageOverdrive(randomMode, colorWheelPosition);
+  }
 }
 
 void updateSeqOverdrive()
@@ -261,7 +307,7 @@ void updateSeq()
   {
     s = randomMode;
   }
-  s = 4;
+  //s = 3;
   
   switch(s)
   {
@@ -666,6 +712,11 @@ void pingPong(int segmentLength)
 
 void sequenceEnd()
 {
+  /*if (IS_SLAVE)
+  {
+    return;
+  }*/
+
   log("sequence end");
   changeColor();
   ledIndex = 0;
@@ -686,6 +737,17 @@ void sequenceEnd()
   {
     choseRandomSequence();
   }
+
+  if (!IS_SLAVE)
+  {
+    writeSerialMessage(1, randomMode, colorWheelPosition);
+  }
+}
+
+void sequenceEnd(byte sequenceMode)
+{
+  sequenceEnd();
+  randomMode = sequenceMode;
 }
 
 bool updateStepTime(float stepDuration, int stepCount, bool isChangingColor)
@@ -698,7 +760,11 @@ bool updateStepTime(float stepDuration, int stepCount, bool isChangingColor)
     }
     else if (isChangingColor)
     {
-      changeColor();
+      if (!IS_SLAVE)
+      {
+        changeColor();
+        writeSerialColor();
+      }
     }
     return true;
   }
@@ -836,9 +902,10 @@ void copyHalfStrip()
   }
 }
 
-void rgbFromWheel(byte WheelPos)
+void rgbFromWheel(byte wheelPos)
 {
-  rgbFromWheel(WheelPos, redValue, greenValue, blueValue);
+  colorWheelPosition = wheelPos;
+  rgbFromWheel(wheelPos, redValue, greenValue, blueValue);
 }
 
 void changeColor()
@@ -861,9 +928,11 @@ void updateColorSeqEnd(byte colorMode)
   {
     rgbFromWheel(random(255));
   }
+  else if (colorMode == 4)
+  {
+    rgbFromWheel(getSerialMessageColor());
+  }
 }
-
-// DMX = 0, Rnd = 1, Wheel = 2, WheelStep = 3
 
 void updateColorTick(byte colorMode)
 {
@@ -877,6 +946,13 @@ void updateColorTick(byte colorMode)
   {
     rgbFromWheel(ledIndex);
   }
+}
+
+void writeSerialColor()
+{
+  if (IS_SLAVE) return;
+
+  writeSerialMessageColor(colorWheelPosition);
 }
 
 void readDMX()
