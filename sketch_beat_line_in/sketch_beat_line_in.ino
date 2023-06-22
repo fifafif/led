@@ -3,6 +3,13 @@
 
 // Our Global Sample Rate, 5000hz
 #define SAMPLEPERIODUS 200
+#define SOUND_REFERENCE_PIN 8
+#define MAX_BPM 250;
+
+typedef unsigned long ulong;
+
+ulong lastBeatTimeMs = 0;
+int minBeatIntervalMs = (int)(60.0 * 1000 / 250);
 
 // defines for setting and clearing register bits
 #ifndef cbi
@@ -18,9 +25,14 @@ void setup() {
     cbi(ADCSRA,ADPS1);
     cbi(ADCSRA,ADPS0);
 
+    Serial.begin(115200);
+    Serial.print("Min beat interval: ");
+    Serial.println(minBeatIntervalMs);
+
+
     //The pin with the LED
     pinMode(LED_BUILTIN, OUTPUT);
-    pinMode(2, OUTPUT);
+    pinMode(SOUND_REFERENCE_PIN, OUTPUT);
 }
 
 // 20 - 200hz Single Pole Bandpass IIR Filter
@@ -82,8 +94,19 @@ void loop() {
                 thresh = 0.02f * (float)analogRead(1);
 
                 // If we are above threshold, light up LED
-                if(beat > thresh) digitalWrite(LED_BUILTIN, HIGH);
-                else digitalWrite(LED_BUILTIN, LOW);
+                if(beat > thresh
+                   && millis() - lastBeatTimeMs > minBeatIntervalMs) 
+                {
+                  lastBeatTimeMs = millis();
+                  Serial.println(lastBeatTimeMs);
+                  digitalWrite(LED_BUILTIN, HIGH);
+                  digitalWrite(SOUND_REFERENCE_PIN, HIGH);
+                }
+                else 
+                { 
+                  digitalWrite(LED_BUILTIN, LOW);
+                  digitalWrite(SOUND_REFERENCE_PIN, LOW);
+                }
 
                 //Reset sample counter
                 i = 0;

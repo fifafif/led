@@ -90,6 +90,8 @@ float lightIntensityBumpValue = 0;
 float lightIntensityValue = 0;
 
 long lastPulseTimestamp = 0;
+int ticksSinceLastBeat = 666;
+bool isWritingBeat;
 
 void setup() {
   setupADC();
@@ -147,7 +149,7 @@ void loop() {
     } else {
       updateLightIntensityBasedOnAmplitudes();
     }
-    updateLights();
+    //updateLights();
     Serial.println("");
   }
 }
@@ -347,9 +349,25 @@ void updateBeatProbability() {
   beatProbability *= calculateVarianceFactor();
   beatProbability *= calculateRecencyFactor();
   
-  if (beatProbability >= beatProbabilityThreshold) {
+  if (beatProbability >= beatProbabilityThreshold) 
+  {
     lastBeatTimestamp = millis();
     durationSinceLastBeat = 0;
+    ticksSinceLastBeat = 0;
+    isWritingBeat = true;
+    digitalWrite(SOUND_REFERENCE_PIN, HIGH);
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
+  else
+  {
+    ticksSinceLastBeat += 1;
+    if (isWritingBeat
+        && millis() - lastBeatTimestamp > 300)
+    {
+      isWritingBeat = false;
+      digitalWrite(SOUND_REFERENCE_PIN, LOW);
+      digitalWrite(LED_BUILTIN, LOW);
+    }
   }
   
   logValue("B", beatProbability, 5);
@@ -381,14 +399,6 @@ float calculateSignalChangeFactor() {
  * Low values are indicating a low beat probability.
  */
 float calculateMagnitudeChangeFactor() {
-  float changeThresholdFactor = 1.1;
-  if (durationSinceLastBeat < 750) {
-    // attempt to not miss consecutive beats
-    changeThresholdFactor *= 0.95;
-  } else if (durationSinceLastBeat > 1000) {
-    // reduce false-positives
-    changeThresholdFactor *= 1.05;
-  }
   
   // current overall magnitude is higher than the average, probably 
   // because the signal is mainly noise
@@ -423,7 +433,12 @@ float calculateMagnitudeChangeFactor() {
     magnitudeChangeFactor = max(magnitudeChangeFactor, aboveAverageOverallMagnitudeFactor);
   } else {
     // this is here to avoid treating signal noise as beats
-    //magnitudeChangeFactor *= 1 - aboveAverageOverallMagnitudeFactor;
+    magnitudeChangeFactor *= 1 - aboveAverageOverallMagnitudeFactor;
+  }
+
+  if (aboveAverageOverallMagnitudeFactor < 0.2)
+  {
+    magnitudeChangeFactor = 0;
   }
   
   //float maximumMagnitude = 128; //128;
@@ -474,12 +489,18 @@ float calculateVarianceFactor() {
 float calculateRecencyFactor() {
   float recencyFactor = 1;
   durationSinceLastBeat = millis() - lastBeatTimestamp;
-  
-  int referenceDuration = MINIMUM_DELAY_BETWEEN_BEATS - SINGLE_BEAT_DURATION;
-  recencyFactor = 1 - ((float) referenceDuration / durationSinceLastBeat);
-  recencyFactor = constrain(recencyFactor, 0, 1);
-  
-  //logValue("R", recencyFactor, 5);
+  if (durationSinceLastBeat < (1000 * 60 / 220))
+  {
+    return 0;
+  }
+  else
+  {
+    int referenceDuration = MINIMUM_DELAY_BETWEEN_BEATS - SINGLE_BEAT_DURATION;
+    recencyFactor = 1 - ((float) referenceDuration / durationSinceLastBeat);
+    recencyFactor = constrain(recencyFactor, 0, 1);
+  }
+
+  logValue("R", recencyFactor, 5);
   
   return recencyFactor;
 }
@@ -528,6 +549,7 @@ void updateLightIntensityBasedOnAmplitudes() {
 /**
  * Will update the hat lights based on the last light intensity bumps.
  */
+ /*
 void updateLights() {
   long durationSinceLastBump = millis() - lightIntensityBumpTimestamp;
   float fadeFactor = 1 - ((float) durationSinceLastBump / LIGHT_FADE_OUT_DURATION);
@@ -572,7 +594,7 @@ void updateLights() {
     lastPulseTimestamp = millis();
   }
 }
-
+*/
 /**
  * Converts the specified value into an ASCII-art progressbar
  * with the specified length.
