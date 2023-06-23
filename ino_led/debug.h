@@ -87,3 +87,19 @@ void log(String &message)
   Serial.println(message);
 #endif
 }
+
+void logNumbers(float num1, float num2)
+{
+  Serial.print(num1);
+  Serial.print("-");
+  Serial.print(num2);
+}
+
+void logNumbers(float num1, float num2, float num3)
+{
+  Serial.print(num1);
+  Serial.print("-");
+  Serial.print(num2);
+  Serial.print("-");
+  Serial.print(num3);  
+}

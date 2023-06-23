@@ -1,5 +1,5 @@
 //#define DMX_ON
-//#define LED_SIM_ONLY
+#define LED_SIM_ONLY
 
 #if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
 #define LED_NEOPIXEL
@@ -61,8 +61,8 @@ LiteLED strip(LED_STRIP_WS2812, 0);
 
 // ============================================= CONFIG ==========================================
 
-const bool IS_SLAVE = true;
-const bool IS_OVERDRIVE_REACTIVE = true;
+const bool IS_SLAVE = false;
+const bool IS_OVERDRIVE_REACTIVE = false;
 const bool IS_BEAT_REACTIVE = false;
 
 byte redValue = 255;
@@ -79,8 +79,8 @@ byte mode = 255;
 
 int delayTicks = 1;
 
-byte seqCount = 17;
-byte overdriveSeqCount = 1;
+const byte seqCount = 17;
+const byte overdriveSeqCount = 3;
 byte randomMode = 0;
 
 // Time
@@ -297,6 +297,8 @@ void updateSeqOverdrive()
   switch(s)
   {
     case 0: fireworks(); break;
+    case 1: chargeSequence(4, 60); break;
+    case 2: chargeSequence(7, 20); break;
   }
 }
 
@@ -322,7 +324,7 @@ void updateSeq()
     case 8: wavesSqrtSeq(); break;
     case 9: wavesHardSeq(); break;
     case 10: rainbow(60); break;  
-    case 11: rainbow(900); break;
+    case 11: rainbow(150); break;
     case 12: dropsTime(30); break;
     case 13: firebolt(100); break;
     case 14: cylon(100); break;
@@ -334,6 +336,110 @@ void updateSeq()
 // ===============================================================================================
 // ============================================= SEQUENCES =======================================
 // ===============================================================================================
+
+void chargeSequence(int seqCount, int length)
+{
+  if (sequenceStep < seqCount - 1) {
+    chargeStep1(length);
+  } else if (sequenceStep < seqCount) {
+    chargeStep2(length); 
+  } else {
+    chargeStep3();
+  }
+}
+
+void chargeStep3()
+{
+  if (updateStepTime(0.5f, true)) return;
+  
+  ledIndex = easeOut(normalizedStepTime) * NUMPIXELS;
+  
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    float c = i > ledIndex ? 1 : 0;
+    setPixelColor(i, c);
+  }
+}
+
+void chargeStep2(int fillSize)
+{
+  if (updateStepTime(0.3f)) return;
+  
+  int fillIndex = sequenceStep * fillSize;
+  ledIndex = easeOut(normalizedStepTime) * NUMPIXELS;
+  ledIndex = map(ledIndex, 0, NUMPIXELS, fillIndex, NUMPIXELS);
+
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    float c = 1;
+    if (i < fillIndex)
+    {
+      c = 1;
+    }
+    else
+    {
+      if (i > ledIndex)
+      {
+        c = 0;
+      }
+    }
+    setPixelColor(i, clamp01(c));
+  }
+}
+
+void chargeStep1(int fillSize)
+{
+  int fillIndex = sequenceStep * fillSize;
+  float duration = 1.0f * (1 - 1.0f * fillIndex / NUMPIXELS);
+  if (duration < 0.1f)
+  {
+    duration = 0.1f;
+  }
+
+  if (updateStepTime(duration)) return;
+  
+  ledIndex = easeInSine(normalizedStepTime) * NUMPIXELS;
+  ledIndex = NUMPIXELS - ledIndex;
+  ledIndex = map(ledIndex, 0, NUMPIXELS, fillIndex, NUMPIXELS);
+
+  if (sequenceStep > 0)
+  {
+    float bounceTime = normalizedStepTime * 1.5f;
+    float bounceIndex = 0;
+    if (bounceTime < 1)
+    {
+      bounceIndex = sin(PI * easeOut(bounceTime)) * fillSize * 1.5f;
+      if (bounceTime > 0.5f && bounceIndex < fillSize)
+      {
+        bounceIndex = fillSize;
+      } 
+    }
+    else
+    {
+      bounceIndex = fillSize;
+    }
+
+    fillIndex = fillSize * (sequenceStep - 1) + bounceIndex;
+  }
+
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    float c = 1;
+    if (i < fillIndex)
+    {
+      c = 1;
+    }
+    else
+    {
+      c = 1 - inverseLerp(ledIndex, ledIndex + fillSize, i); 
+      if (i < ledIndex)
+      {
+        c = 0;
+      }
+    }
+    setPixelColor(i, clamp01(c));
+  }
+}
 
 void dropsTime(int segmentLength)
 {
@@ -983,6 +1089,10 @@ void readDMX()
 #endif
 }
 
+int reverseIndex(int i)
+{
+  return NUMPIXELS - i - 1;
+}
 
 void generateRandomStripValues()
 {
