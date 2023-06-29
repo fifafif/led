@@ -1,5 +1,5 @@
 //#define DMX_ON
-#define LED_SIM_ONLY
+//#define LED_SIM_ONLY
 
 #if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
 #define LED_NEOPIXEL
@@ -62,7 +62,7 @@ LiteLED strip(LED_STRIP_WS2812, 0);
 // ============================================= CONFIG ==========================================
 
 const bool IS_SLAVE = false;
-const bool IS_OVERDRIVE_REACTIVE = false;
+const bool IS_OVERDRIVE_REACTIVE = true;
 const bool IS_BEAT_REACTIVE = false;
 
 byte redValue = 255;
@@ -79,8 +79,9 @@ byte mode = 255;
 
 int delayTicks = 1;
 
-const byte seqCount = 17;
+const byte seqCount = 19;
 const byte overdriveSeqCount = 3;
+const byte slaveColorModeCount = 4;
 byte randomMode = 0;
 
 // Time
@@ -192,6 +193,8 @@ void loop()
   //delay(delayTicks);
 }
 
+byte slaveColorMode = 0;
+
 void readSerial()
 {
   if (readSerialMessage())
@@ -206,7 +209,7 @@ void readSerial()
         break;
 
       case 2:
-        rgbFromWheel(getSerialMessageColor());
+        updateSlaveColor(getSerialMessageColor());
         break;
 
       case 3:
@@ -297,8 +300,8 @@ void updateSeqOverdrive()
   switch(s)
   {
     case 0: fireworks(); break;
-    case 1: chargeSequence(4, 60); break;
-    case 2: chargeSequence(7, 20); break;
+    case 1: chargeSequence(5, 20); break;
+    case 2: randomSparksOverdrive(); break;
   }
 }
 
@@ -330,12 +333,38 @@ void updateSeq()
     case 14: cylon(100); break;
     case 15: centerWave(60); break;
     case 16: randomSparks(60); break; 
+    case 17: sineWavesSequence(10.0f, 5.0f); break;
+    case 18: sineWavesSequence(5.0f, 2.0f); break;  
   }
 }
 
 // ===============================================================================================
 // ============================================= SEQUENCES =======================================
 // ===============================================================================================
+
+float getIndexFactor(int i)
+{
+  return 1.0f * i / NUMPIXELS;
+}
+
+void sineWavesSequence(float duration, float width)
+{
+  if (updateStepTime(duration, true)) return;
+  
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    float c = 0;
+    float indexFactor = getIndexFactor(i);
+    float sine1 = sin((normalizedStepTime + indexFactor) * width * 1.0 * PI + tickCount);
+    float sine3 = sin((-normalizedStepTime + indexFactor) * width * 1.7 * PI + tickCount);
+    float sine2 = sin((normalizedStepTime + indexFactor) * width * 2.5 * PI + tickCount);
+    float sine4 = sin((-normalizedStepTime + indexFactor) * width * 5.3 * PI + tickCount);
+
+    c += sine1 + sine2 + sine3 + sine4;
+    c = c > 0 ? 1 : 0;
+    setPixelColor(i, c);
+  }
+}
 
 void chargeSequence(int seqCount, int length)
 {
@@ -746,6 +775,30 @@ void centerWave(int segmentLength)
   copyHalfStrip();
 }
 
+
+void randomSparksOverdrive()
+{
+  if (isTickEnd)
+  {
+    generateRandomStripValues();
+  }
+
+  updateStepTime(1.5f, true);
+  float t = easeIn(normalizedStepTime);
+  const byte speed = 4;
+
+  for (int i = 0; i < NUMPIXELS; i++)
+  {
+    byte value = stripValues[i];
+    value -= speed;
+    stripValues[i] = value;
+  
+    float brightness = (1 - t) * value / 255;
+    byte c = i;
+    setPixelColor(i, wheel(c, brightness));
+  }
+}
+
 void randomSparks(int segmentLength)
 {
   if (isTickEnd)
@@ -824,6 +877,12 @@ void sequenceEnd()
   }*/
 
   log("sequence end");
+  
+  if (IS_SLAVE)
+  {
+    slaveColorMode = random(slaveColorModeCount);
+  }
+  
   changeColor();
   ledIndex = 0;
   ledIndexFloat = 0;
@@ -1036,8 +1095,26 @@ void updateColorSeqEnd(byte colorMode)
   }
   else if (colorMode == 4)
   {
-    rgbFromWheel(getSerialMessageColor());
+    updateSlaveColor(getSerialMessageColor());
   }
+}
+
+void updateSlaveColor(byte slaveColor)
+{
+  switch (slaveColorMode)
+  {
+    case 1:
+      slaveColor += 127;
+      break;   
+    case 2:
+      slaveColor += 30;
+      break;
+    case 3:
+      slaveColor -= 30;
+      break;
+  }
+
+  rgbFromWheel(slaveColor);        
 }
 
 void updateColorTick(byte colorMode)

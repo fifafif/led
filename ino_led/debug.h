@@ -76,14 +76,14 @@ void logStrip(uint32_t *strip, int length)
 
 void log(char *message)
 {
-#if !defined(DMX_ON)
+#if !defined(DMX_ON) && !defined(LED_SIM_ONLY)
   Serial.println(message);
 #endif
 }
 
 void log(String &message)
 {
-#if !defined(DMX_ON)
+#if !defined(DMX_ON) && !defined(LED_SIM_ONLY)
   Serial.println(message);
 #endif
 }
