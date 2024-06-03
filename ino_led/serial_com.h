@@ -25,7 +25,6 @@ byte getSerialMessageColor()
 void setupSerial(bool isSlave)
 {
   isSerialSlave = isSlave;
-
   Serial.print("Begin! is slave: ");
   Serial.println(isSerialSlave);
   SerialPort.begin(115200, SERIAL_8N1, 16, 17);
@@ -33,15 +32,21 @@ void setupSerial(bool isSlave)
 
 void writeSerial(byte value)
 {
+#if !defined(LED_SIM_ONLY)
   Serial.print("[Serial] write value=");
   Serial.println(value);
+#endif
+
   SerialPort.print(value);
 }
 
 void writeSerialBuffer()
 {
+#if !defined(LED_SIM_ONLY)
   Serial.print("[Serial] write buffer. size=");
   Serial.println(bufferSize);
+#endif
+
   SerialPort.write(buffer, bufferSize);
 }
 
@@ -68,10 +73,13 @@ bool readSerialBuffer()
 {
   if (SerialPort.available())
   {
-    Serial.print("[Serial] read buffer available! size=");
-
     int size = SerialPort.readBytes(buffer, bufferSize);
+
+#if !defined(LED_SIM_ONLY)
+    Serial.print("[Serial] read buffer available! size=");
     Serial.println(size);
+#endif
+
     return true;
   }
 
