@@ -3,6 +3,8 @@
 
 // Our Global Sample Rate, 5000hz
 #define SAMPLEPERIODUS 200
+#define AUDIO_PIN 4
+#define LED_PIN 2
 #define SOUND_REFERENCE_PIN 8
 #define MAX_BPM 250;
 
@@ -76,7 +78,7 @@ void loop() {
 
     for(i = 0;;++i){
         // Read ADC and center so +-512
-        sample = (float)analogRead(0)-503.f;
+        sample = (float)analogRead(AUDIO_PIN)-503.f;
 
         // Filter only bass component
         value = bassFilter(sample);
@@ -98,13 +100,14 @@ void loop() {
                    && millis() - lastBeatTimeMs > minBeatIntervalMs) 
                 {
                   lastBeatTimeMs = millis();
+                  Serial.print("BEAT ");
                   Serial.println(lastBeatTimeMs);
-                  digitalWrite(LED_BUILTIN, HIGH);
+                  digitalWrite(LED_PIN, HIGH);
                   digitalWrite(SOUND_REFERENCE_PIN, HIGH);
                 }
                 else 
                 { 
-                  digitalWrite(LED_BUILTIN, LOW);
+                  digitalWrite(LED_PIN, LOW);
                   digitalWrite(SOUND_REFERENCE_PIN, LOW);
                 }
 
