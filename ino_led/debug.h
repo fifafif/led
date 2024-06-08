@@ -91,6 +91,16 @@ void log(String &message)
 #endif
 }
 
+void logAlways(String &message)
+{
+  Serial.println(message);
+}
+
+void logAlways(char *message)
+{
+  Serial.println(message);
+}
+
 void logNumbers(float num1, float num2)
 {
   Serial.print(num1);

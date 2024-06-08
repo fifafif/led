@@ -121,7 +121,7 @@ bool isBeatResettingSequence;
 
 StripHandler handler;
 Playback playback(NUMPIXELS);
-Animations animations(&playback, &handler, stripValues);
+Animations animations(&playback, &handler);
 
 // Overdrive
 bool isOverdrive;
@@ -137,6 +137,7 @@ void setup ()
   handler.numPixels = NUMPIXELS;
   handler.strip = strip;
   handler.brightness = brightness;
+  handler.stripValues = stripValues;
 
   pinMode(LED_ONBOARD, OUTPUT);
   pinMode(BUTTON_IN, INPUT);
@@ -201,8 +202,6 @@ void loop()
 #else
   strip.show();
 #endif
-
-  //delay(delayTicks);
 }
 
 byte slaveColorMode = 0;

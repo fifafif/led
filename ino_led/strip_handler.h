@@ -1,6 +1,7 @@
 #ifndef STRIP_HANDLER_H
 #define STRIP_HANDLER_H
 
+#include <Arduino.h>
 #include "colors.h"
 
 class StripHandler {
@@ -12,14 +13,15 @@ class StripHandler {
     byte greenValue = 255;
     byte blueValue = 0;
     byte colorWheelPosition;
+    byte *stripValues;
 
     #if defined(LED_SIM_ONLY)
-    uint32_t *strip;//[NUMPIXELS];
+    uint32_t *strip;
     #else
     #if defined(LED_NEOPIXEL)
-    Adafruit_NeoPixel *strip;//(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
+    Adafruit_NeoPixel *strip;
     #else
-    LiteLED *strip;//(LED_STRIP_WS2812, 0);
+    LiteLED *strip;
     #endif
     #endif
 
@@ -63,6 +65,14 @@ class StripHandler {
     {
       colorWheelPosition = wheelPos;
       rgbFromWheel(wheelPos, redValue, greenValue, blueValue);
+    }
+
+    void generateRandomStripValues()
+    {
+      for (int i = 0; i < numPixels; i++)
+      {
+        stripValues[i] = random(255);
+      }
     }
 
     void testSequence()
