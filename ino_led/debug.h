@@ -1,3 +1,6 @@
+#ifndef DEBUG_H
+#define DEBUG_H
+
 #include <Arduino.h>
 
 char* brightnessToAscii(byte brightness)
@@ -103,3 +106,5 @@ void logNumbers(float num1, float num2, float num3)
   Serial.print("-");
   Serial.print(num3);  
 }
+
+#endif

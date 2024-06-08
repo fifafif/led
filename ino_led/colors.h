@@ -1,3 +1,6 @@
+#ifndef COLORS_H
+#define COLORS_H
+
 
 uint32_t getColor(float r, float g, float b)
 {
@@ -37,3 +40,5 @@ void rgbFromWheel(byte WheelPos, byte &redValue, byte &greenValue, byte &blueVal
   greenValue = 255 - WheelPos;
   blueValue = 0;
 }
+
+#endif

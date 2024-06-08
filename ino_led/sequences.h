@@ -1,3 +1,6 @@
+#ifndef SEQUENCES_H
+#define SEQUENCES_H
+
 enum seqType
 {
   WAVE_SIN,
@@ -14,3 +17,5 @@ float clamp01(float t);
 float lerp(int a, int b, float t);
 float lerp(float a, float b, float t);
 float inverseLerp(int a, int b, float t);
+
+#endif
