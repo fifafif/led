@@ -94,11 +94,11 @@ class CylonAnimation : public Animation
 
     void cylon(int length)
     {
-      Serial.print("cylon ");
+      /*Serial.print("cylon ");
       Serial.print(playback->pixelCount);
       Serial.print(" - ");
       Serial.print(playback->normalizedStepTime);
-      Serial.println(" end");
+      Serial.println(" end");*/
       
       if (playback->updateStepTime(2.0f, true)) return;
 

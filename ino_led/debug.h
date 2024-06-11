@@ -31,6 +31,25 @@ void testAscii()
   Serial.println("end test");
 }
 
+void logStripBytes(uint32_t *strip, int length)
+{
+  // Serial.println();
+  
+  for (int i = 0; i < length; i++)
+  {
+    uint32_t color = strip[i];
+    byte r = (byte)((color >> 16) & 0xff); // red
+    byte g = (byte)((color >> 8) & 0xff); // red
+    byte b = (byte)((color >> 0) & 0xff); // red
+    
+    Serial.write(r);
+    Serial.write(g);
+    Serial.write(b);
+  }
+
+  Serial.println();
+}
+
 void logStrip(uint32_t *strip, int length)
 {
 #if defined(LED_SIM_ONLY) 
@@ -93,12 +112,16 @@ void log(String &message)
 
 void logAlways(String &message)
 {
+#if defined(LED_SIM_ONLY) && defined(LED_SIM_DEBUG)
   Serial.println(message);
+#endif
 }
 
 void logAlways(char *message)
 {
+#if defined(LED_SIM_ONLY) && defined(LED_SIM_DEBUG)
   Serial.println(message);
+#endif
 }
 
 void logNumbers(float num1, float num2)

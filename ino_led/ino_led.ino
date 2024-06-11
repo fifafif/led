@@ -1,5 +1,6 @@
 //#define DMX_ON
 #define LED_SIM_ONLY
+#define LED_SIM_PRINT_BYTES
 
 #if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
 #define LED_NEOPIXEL
@@ -78,7 +79,7 @@ byte blueValue = 0;
 byte redValueDMX = 255;
 byte greenValueDMX = 255;
 byte blueValueDMX = 0;
-float brightness = 0.5;
+float brightness = 1;
 byte stroboMode = 0;
 byte mode = 255;
 
@@ -196,9 +197,16 @@ void loop()
     updateSeq();
   }
 
+  // testSequence();
+
 #if defined(LED_SIM_ONLY)
+#if defined(LED_SIM_PRINT_BYTES)
+  logStripBytes(strip, NUMPIXELS);
+  delay(10);
+#else
   logStrip(strip, NUMPIXELS);
   delay(10);
+#endif
 #else
   strip.show();
 #endif
