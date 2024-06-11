@@ -38,6 +38,11 @@ public class SerialArrayReader : MonoBehaviour
         OpenConnection();
     }
 
+    private void OnDestroy()
+    {
+        Disconnect();
+    }
+
     private IEnumerator ReadBytesUntilNewline()
     {
         while (true)
@@ -71,10 +76,14 @@ public class SerialArrayReader : MonoBehaviour
         }
     }
 
-    void OpenConnection()
+    public void OpenConnection()
     {
+        StopAllCoroutines();
+        
         try
         {
+            Disconnect();
+
             Debug.Log($"Connecting to {portName} - {baudRate}");
             serialPort = new SerialPort(portName, baudRate);
             serialPort.Open();
@@ -82,13 +91,13 @@ public class SerialArrayReader : MonoBehaviour
 
             StartCoroutine(ReadBytesUntilNewline());
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
             Debug.LogError("Failed to open serial port: " + e.Message);
         }
     }
 
-    void OnDestroy()
+    public void Disconnect()
     {
         if (serialPort != null && serialPort.IsOpen)
         {
