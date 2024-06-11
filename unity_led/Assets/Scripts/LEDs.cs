@@ -29,9 +29,9 @@ public class LEDs : MonoBehaviour
 
     private void Update()
     {
-        for (int i = 0; i < leds.Count && i < serialArrayReader.colors.Length; i++)
+        for (int i = 0; i < leds.Count && i < serialArrayReader.Colors.Length; i++)
         {
-            leds[i].SetColor(serialArrayReader.colors[i]);
+            leds[i].SetColor(serialArrayReader.Colors[i]);
         }
     }
 }

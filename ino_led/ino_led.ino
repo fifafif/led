@@ -1,6 +1,7 @@
 //#define DMX_ON
 #define LED_SIM_ONLY
 #define LED_SIM_PRINT_BYTES
+#define LED_SIM_PRINT_BYTES_BRIGHTNESS
 
 #if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
 #define LED_NEOPIXEL

@@ -3,17 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO.Ports;
 using System;
-using System.Linq;
 
 public class SerialArrayReader : MonoBehaviour
 {
-    public string portName = "COM3"; // Set this to your Arduino's port
-    public int baudRate = 9600;
+    public Color[] Colors { get; private set; }
+    public bool IsInit { get; private set; }
+    
+    public string portName = "COM3";
+    public int baudRate = 115200;
     public int arraySize = 300;
+    public bool hasOnlyBrightness;
 
     private SerialPort serialPort;
-    private int[] receivedArray;
-    public Color[] colors;
     private int bytesPerColor = 3;
     private int totalBytes;
     private List<byte> buffer;
@@ -21,8 +22,10 @@ public class SerialArrayReader : MonoBehaviour
 
     private void Awake()
     {
+        bytesPerColor = hasOnlyBrightness ? 1 : 3;
         totalBytes = arraySize * bytesPerColor;
         buffer = new List<byte>(totalBytes);
+        Colors = new Color[arraySize];
     }
 
     private void Start()
@@ -58,10 +61,8 @@ public class SerialArrayReader : MonoBehaviour
 
                         ParseArray(buffer);
 
-                        // Clear the buffer for the next message
                         buffer.Clear();
-
-                        yield return null;
+                        //yield return null;
                     }
                 }
             }
@@ -102,22 +103,35 @@ public class SerialArrayReader : MonoBehaviour
         //Debug.Log(byteArray.Count);
         if (byteArray.Count < totalBytes) return;
 
-        Debug.Log($"Colors received! update duration={Time.unscaledTimeAsDouble - lastUpdateTime:N3}");
+        Debug.Log($"Update duration={Time.unscaledTimeAsDouble - lastUpdateTime:N3}");
         lastUpdateTime = Time.unscaledTimeAsDouble;
 
         try
         {
-            colors = new Color[arraySize];
-            receivedArray = new int[arraySize];
-            for (int i = 0; i < arraySize; i++)
+            if (hasOnlyBrightness)
             {
-                int red = (int)byteArray[i * bytesPerColor];
-                int green = (int)byteArray[i * bytesPerColor + 1];
-                int blue = (int)byteArray[i * bytesPerColor + 2];
+                for (int i = 0; i < arraySize; i++)
+                {
+                    byte color = byteArray[i];
+                    //red = (byte)(color & 0b01);
 
-                //Debug.Log($"{i}={red},{green},{blue}");
+                    //Debug.Log($"{i}={red},{green},{blue}");
 
-                colors[i] = new Color(red / 255f, green / 255f, blue / 255f);
+                    Colors[i] = new Color(0f, color / 255f, 0f);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < arraySize; i++)
+                {
+                    byte red = byteArray[i * bytesPerColor];
+                    byte green = byteArray[i * bytesPerColor + 1];
+                    byte blue = byteArray[i * bytesPerColor + 2];
+
+                    //Debug.Log($"{i}={red},{green},{blue}");
+
+                    Colors[i] = new Color(red / 255f, green / 255f, blue / 255f);
+                }
             }
 
             //Debug.Log("Received array: " + string.Join(", ", colors));

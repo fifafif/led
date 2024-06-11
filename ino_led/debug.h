@@ -33,18 +33,25 @@ void testAscii()
 
 void logStripBytes(uint32_t *strip, int length)
 {
-  // Serial.println();
-  
   for (int i = 0; i < length; i++)
   {
     uint32_t color = strip[i];
-    byte r = (byte)((color >> 16) & 0xff); // red
-    byte g = (byte)((color >> 8) & 0xff); // red
-    byte b = (byte)((color >> 0) & 0xff); // red
-    
+
+#if defined(LED_SIM_PRINT_BYTES_BRIGHTNESS)   
+    byte b = (byte)((color >> 16) & 0xff); // red
+    b = max(b, (byte)((color >> 8) & 0xff)); // green
+    b = max(b, (byte)(color & 0xff));
+
+    Serial.write(b);
+#else
+    byte r = (byte)((color >> 16) & 0xff);
+    byte g = (byte)((color >> 8) & 0xff);
+    byte b = (byte)((color >> 0) & 0xff);
+
     Serial.write(r);
     Serial.write(g);
     Serial.write(b);
+#endif    
   }
 
   Serial.println();
