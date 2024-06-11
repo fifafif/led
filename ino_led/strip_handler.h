@@ -7,7 +7,7 @@
 class StripHandler {
   public:
 
-    int numPixels;
+    int pixelCount;
     float brightness;
     byte redValue = 255;
     byte greenValue = 255;
@@ -69,17 +69,43 @@ class StripHandler {
 
     void generateRandomStripValues()
     {
-      for (int i = 0; i < numPixels; i++)
+      for (int i = 0; i < pixelCount; i++)
       {
         stripValues[i] = random(255);
       }
     }
 
+    void clearRandomStripValues()
+    {
+      for (int i = 0; i < pixelCount; i++)
+      {
+        stripValues[i] = 0;
+      }
+    }
+
+    void setColorToAll(uint32_t color)
+    {
+      for (int i = 0; i < pixelCount; i++)
+      {
+        setPixelColor(i, color);
+      }
+    }
+
+    void setColorToAll(float c)
+    {
+      c *= brightness;
+      uint32_t color = getColor(c * redValue, c * greenValue, c * blueValue);
+      for (int i = 0; i < pixelCount; i++)
+      {
+        setPixelColor(i, color);
+      }
+    }
+
     void testSequence()
     {
-      for (int i = 0; i < numPixels; i++)
+      for (int i = 0; i < pixelCount; i++)
       {
-        setPixelColor(i, getColor(256.0f * i / numPixels, 0, 0));
+        setPixelColor(i, getColor(256.0f * i / pixelCount, 0, 0));
       }
     }
 };

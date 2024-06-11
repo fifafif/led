@@ -8,6 +8,9 @@
 #include "colors.h"
 #include "playback.h"
 
+#define PI 3.14159
+#define PI2 2 * PI
+
 class Animation
 {
   public:
@@ -21,22 +24,98 @@ class Animation
     }
 
     virtual void update(){
-      logAlways("animation update");
+      logLedSim("animation update");
     }
 
     virtual void onStart()
     {
-      log("onStart");
+      logLedSim("onStart");
+      strip->clearRandomStripValues();
     }
 
     virtual void onSequenceEnd()
     {
-      log("onSequenceEnd");
+      logLedSim("onSequenceEnd");
     }
 
     virtual void onSequenceStart()
     {
-      log("onSequenceStart");
+      logLedSim("onSequenceStart");
+    }
+    
+    int reverseIndex(int i)
+    {
+      return strip->pixelCount - i - 1;
+    }
+
+    void updateSegment(float seqValues[], int seqLength)
+    {
+      playback->updateStepTime(6.0f, true);
+
+      playback->ledIndex = easeInSine(playback->normalizedStepTime) * playback->pixelCount;
+      
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        int ii = i - playback->ledIndex;
+        if (ii < 0)
+        {
+          ii += playback->pixelCount;
+        }
+      
+        float c = seqValues[ii % seqLength];
+
+        strip->setPixelColor(i, c);
+      }
+    }
+};
+
+class SegmentAnimation : public Animation
+{
+  public:
+    int length;
+    byte mode;
+
+    SegmentAnimation(Playback *playback, StripHandler *strip, byte mode, int length) : Animation(playback, strip)
+    {
+      this->mode = mode;
+      this->length = length;
+    }
+
+    void update()
+    {
+      switch (mode)
+      {
+        case 1:
+          wavesHardSeq();
+          break;
+
+        default: // 0
+          wavesSeq();
+      }
+    }
+
+    void wavesHardSeq()
+    {
+      float s[length];
+      for (int i = 0; i < length; ++i)
+      {
+        s[i] = i > length / 2 ? 1 : 0;
+      }
+
+      updateSegment(s, length);
+    }
+
+    void wavesSeq()
+    {
+      float s[length];
+      for (int i = 0; i < length; ++i)
+      {
+        float v = sin(PI * float(i) / length);
+        v = v * 1.2 - 0.2;
+        s[i] = v > 0 ? v : 0;
+      }
+
+      updateSegment(s, length);
     }
 };
 
@@ -52,11 +131,6 @@ class FireboltAnimation : public Animation
 
     void update()
     {
-      if (playback->isTickEnd)
-      {
-        strip->generateRandomStripValues();
-      }
-
       if (playback->updateStepTime(2.0f, true)) return;
 
       playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;

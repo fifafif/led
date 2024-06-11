@@ -4,6 +4,15 @@
 #include <Arduino.h>
 #include "debug.h"
 
+unsigned long getMs()
+{
+  #if defined(LED_NEOPIXEL)
+  return (unsigned long)(millis() * 1.25);
+  #else
+  return millis();
+  #endif
+}
+
 class Playback
 {
   public:
@@ -17,7 +26,7 @@ class Playback
     bool isStepEnd;
     bool isSlave;
     int pixelCount;
-    int tickCount;
+    int animationPlayCount;
 
     Playback(int pixelCount)
     {
@@ -59,6 +68,7 @@ class Playback
       ledIndex = (int)(normalizedStepTime * pixelCount) % pixelCount;
       isTickEnd = false;
       isStepEnd = false;
+      isSequenceEnd = false;
       stepTicks += 1;
 
       if (normalizedStepTime >= 1)
@@ -81,7 +91,6 @@ class Playback
       log(msg);
       startStepTime();
       sequenceStep += 1;
-      tickCount += 1;
       isStepEnd = true;
     }
 
@@ -112,6 +121,7 @@ class Playback
       isTickEnd = true;
       isSequenceEnd = true;
       sequenceStep = 0;
+      animationPlayCount += 1;
 
       /*
       if (isOverdrive)
@@ -139,15 +149,6 @@ class Playback
     {
       sequenceEnd();
       //randomMode = sequenceMode;
-    }
-
-    unsigned long getMs()
-    {
-      #if defined(LED_NEOPIXEL)
-      return (unsigned long)(millis() * 1.25);
-      #else
-      return millis();
-      #endif
     }
 };
 #endif

@@ -111,14 +111,14 @@ void log(String &message)
 #endif
 }
 
-void logAlways(String &message)
+void logLedSim(String &message)
 {
 #if defined(LED_SIM_ONLY) && defined(LED_SIM_DEBUG)
   Serial.println(message);
 #endif
 }
 
-void logAlways(char *message)
+void logLedSim(char *message)
 {
 #if defined(LED_SIM_ONLY) && defined(LED_SIM_DEBUG)
   Serial.println(message);
