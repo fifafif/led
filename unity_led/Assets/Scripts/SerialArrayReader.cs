@@ -27,6 +27,11 @@ public class SerialArrayReader : MonoBehaviour
 
     private void Start()
     {
+        foreach (string str in SerialPort.GetPortNames())
+        {
+            Debug.Log(string.Format("Existing COM port: {0}", str));
+        }
+
         OpenConnection();
     }
 
@@ -69,6 +74,7 @@ public class SerialArrayReader : MonoBehaviour
     {
         try
         {
+            Debug.Log($"Connecting to {portName} - {baudRate}");
             serialPort = new SerialPort(portName, baudRate);
             serialPort.Open();
             Debug.Log("Connected to " + portName);
