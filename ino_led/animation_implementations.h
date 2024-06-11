@@ -24,14 +24,19 @@ class Animation
       logAlways("animation update");
     }
 
-    void onStart()
+    virtual void onStart()
     {
       log("onStart");
     }
 
-    void onSequenceEnd()
+    virtual void onSequenceEnd()
     {
       log("onSequenceEnd");
+    }
+
+    virtual void onSequenceStart()
+    {
+      log("onSequenceStart");
     }
 };
 
@@ -75,6 +80,12 @@ class FireboltAnimation : public Animation
         strip->setPixelColor(i, clamp01(c));
       }
     }
+
+    void onSequenceStart()
+    {
+      log("Firebolt onSequenceStart");
+      strip->generateRandomStripValues();
+    }
 };
 
 class CylonAnimation : public Animation
@@ -94,12 +105,6 @@ class CylonAnimation : public Animation
 
     void cylon(int length)
     {
-      /*Serial.print("cylon ");
-      Serial.print(playback->pixelCount);
-      Serial.print(" - ");
-      Serial.print(playback->normalizedStepTime);
-      Serial.println(" end");*/
-      
       if (playback->updateStepTime(2.0f, true)) return;
 
       bool isReverse = playback->normalizedStepTime > 0.5;

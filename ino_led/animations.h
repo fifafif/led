@@ -15,6 +15,7 @@ class Animations
     StripHandler *strip;
     Animation *animation;
     Animation **animations;
+    int currentAnimationIndex = 0;
 
     Animations(Playback *playback, StripHandler *stripHandler)
     {
@@ -24,12 +25,25 @@ class Animations
       
       animations = new Animation*[2];
       animations[0] = new CylonAnimation(playback, stripHandler, 100); 
-      animations[1] = new CylonAnimation(playback, stripHandler, 200);
+      animations[1] = new FireboltAnimation(playback, stripHandler, 60);
+
+      setNewAnimation(1);
     }
 
     void update()
     {
-      animations[0]->update();
+      if (playback->isSequenceEnd)
+      {
+        animations[currentAnimationIndex]->onSequenceStart();
+      }
+
+      animations[currentAnimationIndex]->update();
+    }
+
+    void setNewAnimation(int animationIndex)
+    {
+      currentAnimationIndex = animationIndex;
+      animations[currentAnimationIndex]->onStart();
     }
 };
 

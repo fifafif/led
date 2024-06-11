@@ -82,12 +82,6 @@ void logStrip(uint32_t *strip, int length)
       v = max(v, (int)((color >> 8) & 0xff)); // green
       v = max(v, (int)(color & 0xff));
       
-      /*int r = (color >> 16) & 0xff; // red
-      int g = (int)((color >> 8) & 0xff); // green
-      int b = (int)(color & 0xff);
-      int v = r + g + b;
-      v /= 3;*/
-
       brightness += v;
     }
 

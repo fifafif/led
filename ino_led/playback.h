@@ -13,6 +13,8 @@ class Playback
     int sequenceStep;
     unsigned long stepStartMs;
     bool isTickEnd;
+    bool isSequenceEnd;
+    bool isStepEnd;
     bool isSlave;
     int pixelCount;
     int tickCount;
@@ -26,7 +28,7 @@ class Playback
     {
       if (updateStepTime(stepDuration))
       {
-        if (stepCount <= sequenceStep)
+        if (sequenceStep > stepCount)
         {
           sequenceEnd();
         }
@@ -56,6 +58,7 @@ class Playback
       normalizedStepTime = elapsedMs / (stepDuration * 1000);
       ledIndex = (int)(normalizedStepTime * pixelCount) % pixelCount;
       isTickEnd = false;
+      isStepEnd = false;
       stepTicks += 1;
 
       if (normalizedStepTime >= 1)
@@ -79,6 +82,7 @@ class Playback
       startStepTime();
       sequenceStep += 1;
       tickCount += 1;
+      isStepEnd = true;
     }
 
     void startStepTime()
@@ -106,6 +110,7 @@ class Playback
       //changeColor();
       ledIndex = 0;
       isTickEnd = true;
+      isSequenceEnd = true;
       sequenceStep = 0;
 
       /*
