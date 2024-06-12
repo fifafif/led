@@ -37,7 +37,7 @@ class Playback
     {
       if (updateStepTime(stepDuration))
       {
-        if (sequenceStep > stepCount)
+        if (sequenceStep >= stepCount)
         {
           sequenceEnd();
         }

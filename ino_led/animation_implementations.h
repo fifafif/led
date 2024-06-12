@@ -3,71 +3,210 @@
 
 #include <Arduino.h>
 #include "debug.h"
-#include "animations.h"
+#include "animation.h"
 #include "sequences.h"
 #include "colors.h"
 #include "playback.h"
 
-#define PI 3.14159
-#define PI2 2 * PI
 
-class Animation
+class SineWaveAnimation : public Animation
 {
   public:
-    Playback *playback;
-    StripHandler *strip;
+    float length;
 
-    Animation(Playback *playback, StripHandler *strip)
+    SineWaveAnimation(Playback *playback, StripHandler *strip, float length) : Animation(playback, strip)
     {
-      this->playback = playback;
-      this->strip = strip;
+      this->length = length;
     }
 
-    virtual void update(){
-      logLedSim("animation update");
+    float getIndexFactor(int i)
+    {
+      return 1.0f * i / playback->pixelCount;
     }
 
-    virtual void onStart()
+    void update()
     {
-      logLedSim("onStart");
-      strip->clearRandomStripValues();
-    }
-
-    virtual void onSequenceEnd()
-    {
-      logLedSim("onSequenceEnd");
-    }
-
-    virtual void onSequenceStart()
-    {
-      logLedSim("onSequenceStart");
-    }
-    
-    int reverseIndex(int i)
-    {
-      return strip->pixelCount - i - 1;
-    }
-
-    void updateSegment(float seqValues[], int seqLength)
-    {
-      playback->updateStepTime(6.0f, true);
-
-      playback->ledIndex = easeInSine(playback->normalizedStepTime) * playback->pixelCount;
+      if (playback->updateStepTime(5, true)) return;
       
       for (int i = 0; i < playback->pixelCount; i++)
       {
-        int ii = i - playback->ledIndex;
-        if (ii < 0)
-        {
-          ii += playback->pixelCount;
-        }
-      
-        float c = seqValues[ii % seqLength];
+        float c = 0;
+        float indexFactor = getIndexFactor(i);
+        float sine1 = sin((playback->normalizedStepTime + indexFactor) * length * 1.0 * PI + playback->animationPlayCount);
+        float sine3 = sin((-playback->normalizedStepTime + indexFactor) * length * 1.7 * PI + playback->animationPlayCount);
+        float sine2 = sin((playback->normalizedStepTime + indexFactor) * length * 2.5 * PI + playback->animationPlayCount);
+        float sine4 = sin((-playback->normalizedStepTime + indexFactor) * length * 5.3 * PI + playback->animationPlayCount);
+
+        c += sine1 + sine2 + sine3 + sine4;
+        c = c > 0 ? 1 : 0;
+        strip->setPixelColor(i, c);
+      }
+    }
+};
+
+
+
+class PulseAnimation : public Animation
+{
+  public:
+    float length;
+
+    PulseAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    {
+      this->length = length;
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(3.0f, true)) return;
+
+      const float f = 0.8;
+      float c = playback->normalizedStepTime;
+      c = sin(c * PI);
+      c = map(c, f);
+
+      c *= map(sin(playback->normalizedStepTime * PI * 2), f);
+      c *= map(sin(playback->normalizedStepTime * PI * 4), f);
+
+      strip->setColorToAll(c);
+    }
+
+    float map(float v, float f)
+    {
+      v = v * 0.5 + 0.5;
+      return (1 - f) + v * f;
+    }
+};
+
+
+class PingPongAnimation : public Animation
+{
+  public:
+    float length;
+
+    PingPongAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    {
+      this->length = length;
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(1.0f, 2)) return;
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        int ii = (i + playback->ledIndex) % playback->pixelCount;
+        int segmentCount = playback->pixelCount / length;
+        int o = ii / segmentCount;
+        float c = i > playback->ledIndex ? 1.0 : 0.0;
 
         strip->setPixelColor(i, c);
       }
     }
 };
+
+
+class GrowAnimation : public Animation
+{
+  public:
+    float duration;
+    GrowAnimation(Playback *playback, StripHandler *strip, float duration) : Animation(playback, strip)
+    {
+      this->duration = duration;
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(duration, 2, false)) return;
+      
+      byte tailLength = 30;
+      bool isUp = playback->sequenceStep % 2 == 0;
+      if (isUp)
+      {
+        playback->ledIndex = easeIn(playback->normalizedStepTime) * playback->pixelCount;
+      }
+      else
+      {
+        playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+      }
+      
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        int ii = (i + playback->ledIndex) % playback->pixelCount;
+        float c;
+        
+        if (isUp)
+        { 
+          c = 1 - inverseLerp(playback->ledIndex, playback->ledIndex + tailLength, i); 
+        }
+        else
+        {
+          int inv = playback->pixelCount - playback->ledIndex;
+          c = 1 - inverseLerp(inv, inv + tailLength, i); 
+        }
+        
+        strip->setPixelColor(i, c);
+      }
+    }
+};
+
+class SparksAnimation : public Animation
+{
+  public:
+
+    SparksAnimation(Playback *playback, StripHandler *strip) : Animation(playback, strip)
+    {
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(1.5f, true)) return;
+
+      float t = easeIn(playback->normalizedStepTime);
+      const byte speed = 4;
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        byte value = strip->stripValues[i];
+        value -= speed;
+        strip->stripValues[i] = value;
+      
+        float brightness = (1 - t) * value / 255;
+        byte c = i;
+        strip->setPixelColor(i, wheel(c, brightness));
+      }
+    }
+
+    void onSequenceStart()
+    {
+      strip->generateRandomStripValues();
+    }
+};
+
+class DropsTimeAnimation : public Animation
+{
+  public:
+    int length;
+
+    DropsTimeAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    {
+      this->length = length;
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(4.0f, true)) return;
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        int ii = (i + playback->ledIndex) % playback->pixelCount;
+        int segmentCount = playback->pixelCount / length;
+        float c = 1.0 * (i % length) / length;
+        strip->setPixelColor(ii, c);
+      }
+    }
+};
+
 
 class SegmentAnimation : public Animation
 {
