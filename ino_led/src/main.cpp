@@ -100,6 +100,17 @@ Animations animations(&playback, &stripHandler);
 bool isOverdrive;
 int lastOverdriveButtonState;
 
+
+void readSerial();
+void readBeat();
+void beat();
+void readOverrideButton();
+void startOverdrive();
+void startOverdrive(byte index);
+void writeSerialColor();
+void readDMX();
+void showStrip();
+
 // ============================================= MAIN ==========================================
 
 void setup () 
@@ -218,6 +229,7 @@ void readBeat()
   lastBeatState = beatState;
 }
 
+
 void beat()
 {
   log("beat!");
@@ -283,7 +295,6 @@ void copyHalfStrip()
     setPixelColor(i, getPixelColor(NUMPIXELS - i));
   }
 }*/
-
 
 void writeSerialColor()
 {
