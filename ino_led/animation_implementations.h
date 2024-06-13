@@ -8,6 +8,86 @@
 #include "colors.h"
 #include "playback.h"
 
+class StarsAnimation : public Animation
+{
+  public:
+    int length;
+    float timeToNewStar;
+    float fadeSpeed;
+    float newStarIntervalnterval;
+
+    StarsAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    {
+      this->length = length;
+      fadeSpeed = 1.0f;
+      newStarIntervalnterval = 0.02f;
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(2.0f, true)) return;
+
+      byte fade = round(255 * fadeSpeed * playback->deltaTime);
+      
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        byte value = strip->stripValues[i];
+        if (value < fade)
+        {
+          value = 0;
+        }
+        else
+        {
+          value -= fade;
+          if (value < 0)
+          {
+            value = 0;
+          }
+        }
+
+        strip->stripValues[i] = value;
+        strip->setPixelColor(i, value / 255.0f);
+      }
+
+      timeToNewStar -= playback->deltaTime;
+      if (timeToNewStar <= 0)
+      {
+        timeToNewStar += newStarIntervalnterval;
+
+        int index = random(playback->pixelCount);
+        int start = max(0, index - length);
+        int end = min(playback->pixelCount, index + length);
+
+        for (int i = start; i < end; i++)
+        {
+          float c;
+          if (i < index)
+          {
+            c = 1.0f * (i - start) / length;
+          }
+          else if (i > index)
+          {
+            c = 1.0f * (end - i) / length;
+          }
+          else
+          {
+            c = 1;
+          }
+
+          c = max(strip->stripValues[i] / 255.0f, c); 
+          strip->stripValues[i] = (byte)(c * 255);
+          strip->setPixelColor(i, c);
+        }
+      }
+    }
+
+    void onStart()
+    {
+      strip->clearRandomStripValues();
+      strip->clearColor();
+    }
+};
+
 class SegmentFillAnimation : public Animation
 {
   public:
@@ -161,7 +241,6 @@ class PulseAnimation : public Animation
     }
 };
 
-
 class PingPongAnimation : public Animation
 {
   public:
@@ -187,7 +266,6 @@ class PingPongAnimation : public Animation
       }
     }
 };
-
 
 class GrowAnimation : public Animation
 {

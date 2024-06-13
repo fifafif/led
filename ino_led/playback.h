@@ -19,8 +19,10 @@ class Playback
     int ledIndex;
     int stepTicks;
     float normalizedStepTime;
+    float deltaTime;
     int sequenceStep;
     unsigned long stepStartMs;
+    float lastUpdateTime;
     bool isTickEnd;
     bool isSequenceEnd;
     bool isStepEnd;
@@ -63,6 +65,8 @@ class Playback
     bool updateStepTime(float stepDuration, bool isLastStep)
     {
       unsigned long ms = getMs();
+      deltaTime = 0.001f * (ms - lastUpdateTime);
+      lastUpdateTime = ms;
       unsigned long elapsedMs = ms - stepStartMs;
       normalizedStepTime = elapsedMs / (stepDuration * 1000);
       ledIndex = (int)(normalizedStepTime * pixelCount) % pixelCount;

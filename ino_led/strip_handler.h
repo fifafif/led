@@ -83,6 +83,11 @@ class StripHandler {
       }
     }
 
+    void clearColor()
+    {
+      setColorToAll((uint32_t)0);
+    }
+
     void setColorToAll(uint32_t color)
     {
       for (int i = 0; i < pixelCount; i++)
