@@ -129,7 +129,15 @@ void logNumbers(float num1, float num2)
 {
   Serial.print(num1);
   Serial.print("-");
-  Serial.print(num2);
+  Serial.println(num2);
+}
+
+void logNumbers(char* msg, float num1, float num2)
+{
+  Serial.print(msg);
+  Serial.print(num1);
+  Serial.print("-");
+  Serial.println(num2);
 }
 
 void logNumbers(float num1, float num2, float num3)
@@ -138,7 +146,21 @@ void logNumbers(float num1, float num2, float num3)
   Serial.print("-");
   Serial.print(num2);
   Serial.print("-");
-  Serial.print(num3);  
+  Serial.println(num3);  
+}
+
+void printArray(int *array, int size)
+{
+  for (int i = 0; i < size - 1; i++)
+  {
+    Serial.print(array[i]);
+    Serial.print(",");
+  }
+
+  if (size > 0)
+  {
+    Serial.println(array[size - 1]);
+  }
 }
 
 #endif

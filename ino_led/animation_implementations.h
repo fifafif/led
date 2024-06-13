@@ -8,6 +8,91 @@
 #include "colors.h"
 #include "playback.h"
 
+class SegmentFillAnimation : public Animation
+{
+  public:
+    int segmentCount;
+    float *segmentValues;
+    int currentSegmentIndex = 0;
+    int segmentWidth;
+    int *segmentIndices;
+
+    SegmentFillAnimation(Playback *playback, StripHandler *strip, int segmentCount) : Animation(playback, strip)
+    {
+      this->segmentCount = segmentCount;
+      segmentWidth = (int)round(1.0 * playback->pixelCount / segmentCount);
+      segmentValues = new float[segmentWidth];
+      segmentIndices = new int[segmentCount];
+
+      for (int i = 0; i < segmentCount; i++)
+      {
+        segmentIndices[i] = i;
+      }
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(0.75f, segmentCount, false)) return;
+
+      int start = currentSegmentIndex * segmentWidth;
+      int end = start + segmentWidth;
+
+      // logNumbers("Start end: ", start, end);
+      
+      bool isReverse = playback->sequenceStep % 2 == 0;
+      int ledIndex = start + (int)round(easeOut(playback->normalizedStepTime) * segmentWidth);
+
+      for (int i = start, j = 0; i < end && i < playback->pixelCount; i++, j++)
+      {
+        float c = i > ledIndex ? 0 : 1;
+
+        if (isReverse)
+        {
+          strip->setPixelColor(end - j - 1, c);
+        }
+        else
+        {
+          strip->setPixelColor(i, c);
+        }
+      }
+    }
+
+    void onSequenceStart()
+    {
+      currentSegmentIndex = 0;
+
+      strip->setColorToAll((uint32_t)0);
+
+      for (int i = segmentCount - 1; i > 0; i--) 
+      {
+        int j = random(i + 1);
+        int temp = segmentIndices[i];
+        segmentIndices[i] = segmentIndices[j];
+        segmentIndices[j] = temp;
+      }
+
+      // printArray(segmentIndices, segmentCount);
+    }
+
+    void onStepStart()
+    {
+      Serial.print("Step start: ");
+      Serial.println(playback->sequenceStep);
+
+      if (playback->sequenceStep > 0)
+      {
+        int start = currentSegmentIndex * segmentWidth;
+        int end = start + segmentWidth;
+
+        for (int i = start, j = 0; i < end && i < playback->pixelCount; i++, j++)
+        {
+            strip->setPixelColor(i, 1.0f);
+        }
+      }
+
+      currentSegmentIndex = segmentIndices[playback->sequenceStep];
+    }
+};
 
 class SineWaveAnimation : public Animation
 {
@@ -43,8 +128,6 @@ class SineWaveAnimation : public Animation
       }
     }
 };
-
-
 
 class PulseAnimation : public Animation
 {

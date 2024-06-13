@@ -11,7 +11,7 @@
 class Animations
 {
   public:
-    const int ANIMATION_COUNT = 10;
+    const int ANIMATION_COUNT = 11;
     const int OVERDRIVE_ANIMATION_COUNT = 2;
     
     const byte switchAutoModeEveryTickCount = 2;
@@ -55,12 +55,13 @@ class Animations
       animations[7] = new PingPongAnimation(playback, stripHandler, 100);
       animations[8] = new PulseAnimation(playback, stripHandler, 100);
       animations[9] = new SineWaveAnimation(playback, stripHandler, 2);
+      animations[10] = new SegmentFillAnimation(playback, stripHandler, 6);
 
       overdriveAnimations = new Animation*[OVERDRIVE_ANIMATION_COUNT];
       overdriveAnimations[0] = new CylonAnimation(playback, stripHandler, 100); 
       overdriveAnimations[1] = new FireboltAnimation(playback, stripHandler, 60);
 
-      debugAnimationIndex = 9;
+      debugAnimationIndex = 10;
       choseRandomAnimation();
     }
 
@@ -86,6 +87,11 @@ class Animations
         }
 
         animations[currentAnimationIndex]->onSequenceStart();
+        animations[currentAnimationIndex]->onStepStart();
+      }
+      else if (playback->isStepEnd)
+      {
+        animations[currentAnimationIndex]->onStepStart();
       }
 
       animations[currentAnimationIndex]->update();

@@ -38,7 +38,6 @@ float clamp01(float t)
       : t);
 }
 
-
 float lerp(int a, int b, float t)
 {
   if (t >= 1) return b; 

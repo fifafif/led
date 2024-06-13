@@ -42,6 +42,11 @@ class Animation
     {
       logLedSim("onSequenceStart");
     }
+
+    virtual void onStepStart()
+    {
+      
+    }
     
     int reverseIndex(int i)
     {
