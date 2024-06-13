@@ -57,7 +57,7 @@ class Animation
     {
       playback->updateStepTime(6.0f, true);
 
-      playback->ledIndex = easeInSine(playback->normalizedStepTime) * playback->pixelCount;
+      playback->ledIndex = sineEaseIn(playback->normalizedStepTime) * playback->pixelCount;
       
       for (int i = 0; i < playback->pixelCount; i++)
       {

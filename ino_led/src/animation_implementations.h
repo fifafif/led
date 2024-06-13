@@ -120,7 +120,7 @@ class SegmentFillAnimation : public Animation
       // logNumbers("Start end: ", start, end);
       
       bool isReverse = playback->sequenceStep % 2 == 0;
-      int ledIndex = start + (int)round(easeOut(playback->normalizedStepTime) * segmentWidth);
+      int ledIndex = start + (int)round(bounceEaseOut(playback->normalizedStepTime) * segmentWidth);
 
       for (int i = start, j = 0; i < end && i < playback->pixelCount; i++, j++)
       {
