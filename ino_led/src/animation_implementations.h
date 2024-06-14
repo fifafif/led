@@ -587,6 +587,12 @@ class FireboltAnimation : public Animation
       log("Firebolt onSequenceStart");
       strip->generateRandomStripValues();
     }
+
+    void onBeat()
+    {
+      playback->stepTimeEnd();
+      playback->sequenceEnd();
+    }
 };
 
 class CylonAnimation : public Animation

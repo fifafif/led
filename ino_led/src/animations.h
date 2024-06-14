@@ -63,7 +63,7 @@ class Animations
       overdriveAnimations[0] = new CylonAnimation(playback, stripHandler, 100); 
       overdriveAnimations[1] = new FireboltAnimation(playback, stripHandler, 60);
 
-      debugAnimationIndex = 2;
+      debugAnimationIndex = 1;
       choseRandomAnimation();
     }
 
@@ -209,20 +209,17 @@ class Animations
 
       strip->setRGBFromWheel(slaveColor);        
     }
-/*
-    void updateColorTick(byte colorMode)
+
+    void setAsSlave(bool isSlave)
     {
-      if (colorMode == 0)
-      {
-        redValue = redValueDMX;
-        greenValue = greenValueDMX;
-        blueValue = blueValueDMX;
-      }
-      else if (colorMode == 2)
-      {
-        rgbFromWheel(ledIndex);
-      }
-    }*/
+      this->isSlave = isSlave;
+      colorMode = isSlave ? 4 : 1;
+    }
+
+    void beat()
+    {
+      animations[currentAnimationIndex]->onBeat();
+    }
 };
 
 #endif

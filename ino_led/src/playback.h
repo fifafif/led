@@ -43,14 +43,18 @@ class Playback
         {
           sequenceEnd();
         }
-        else if (isChangingColor)
-        {
-          if (!isSlave)
-          {
-            // changeColor();
-            // writeSerialColor();
-          }
-        }
+        // else if (isChangingColor)
+        // {
+        //   if (!isSlave)
+        //   {
+        //     // changeColor();
+        //     // writeSerialColor();
+        //   }
+        // }
+        // else
+        // {
+        //   stepTimeEnd();
+        // }
         return true;
       }
 

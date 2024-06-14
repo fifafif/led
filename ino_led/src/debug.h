@@ -68,7 +68,7 @@ void logColor(byte r, byte b, byte g)
 
 void logStrip(uint32_t *strip, int length)
 {
-#if defined(LED_SIM_ONLY) 
+#if defined(LED_SIM_ONLY) && defined(LED_SIM_PRINT)  
 
   int width = 100;
   float step = 1.0 * length / width;
@@ -108,14 +108,14 @@ void logStrip(uint32_t *strip, int length)
 
 void log(char *message)
 {
-#if !defined(DMX_ON) && !defined(LED_SIM_ONLY)
+#if !defined(DMX_ON) && !defined(LED_SIM_PRINT)
   Serial.println(message);
 #endif
 }
 
 void log(String &message)
 {
-#if !defined(DMX_ON) && !defined(LED_SIM_ONLY)
+#if !defined(DMX_ON) && !defined(LED_SIM_PRINT)
   Serial.println(message);
 #endif
 }

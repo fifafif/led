@@ -48,6 +48,11 @@ class Animation
     {
       
     }
+
+    virtual void onBeat()
+    {
+      log("beat");
+    }
     
     int reverseIndex(int i)
     {

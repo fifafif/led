@@ -1,8 +1,10 @@
 //#define DMX_ON
 #define LED_SIM_ONLY
 #define LED_SIM_DEBUG
+#define LED_SIM_PRINT
 #define LED_SIM_PRINT_BYTES
 #define LED_SIM_PRINT_BYTES_BRIGHTNESS
+#define BEAT_SIMULATOR
 
 #if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
 #define LED_NEOPIXEL
@@ -37,6 +39,7 @@
 #include "tick_payload.h"
 #include "strip_handler.h"
 #include "animations.h"
+#include "beat_simulator.h"
 
 #if defined(ARDUINO_LOGIC)
 #define LED_ONBOARD LED_BUILTIN
@@ -89,17 +92,18 @@ int lastBeatState;
 
 // Sequences
 byte stripValues[NUMPIXELS] = {};
-bool isBeatChangingColor;
-bool isBeatResettingSequence;
 
 StripHandler stripHandler;
 Playback playback(NUMPIXELS);
 Animations animations(&playback, &stripHandler);
 
+#if defined(BEAT_SIMULATOR)
+BeatSimulator beatSimulator(&animations, 145);
+#endif
+
 // Overdrive
 bool isOverdrive;
 int lastOverdriveButtonState;
-
 
 void readSerial();
 void readBeat();
@@ -146,17 +150,7 @@ void setup ()
 #endif
 
   setupSerial(IS_SLAVE);
-
-  animations.isSlave = IS_SLAVE;
-  
-  if (IS_SLAVE)
-  {
-    animations.colorMode = 4;
-  }
-  else
-  {
-    animations.colorMode = 1;
-  }
+  animations.setAsSlave(IS_SLAVE);
 }
 
 void loop() 
@@ -165,6 +159,10 @@ void loop()
   readBeat();
   readOverrideButton();
   readSerial();
+
+  #if defined(BEAT_SIMULATOR)
+  beatSimulator.update();
+  #endif
 
   animations.update();
   // testSequence();
@@ -175,13 +173,15 @@ void loop()
 void showStrip()
 {
 #if defined(LED_SIM_ONLY)
-#if defined(LED_SIM_PRINT_BYTES)
+  #if defined(LED_SIM_PRINT)
+    #if defined(LED_SIM_PRINT_BYTES)
   logStripBytes(strip, NUMPIXELS);
   delay(10);
-#else
+    #else
   logStrip(strip, NUMPIXELS);
   delay(10);
-#endif
+    #endif
+  #endif
 #else
   strip.show();
 #endif
