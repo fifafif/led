@@ -16,6 +16,7 @@ class Animation
   public:
     Playback *playback;
     StripHandler *strip;
+    bool isStepStartChangingColor = false;
 
     Animation(Playback *playback, StripHandler *strip)
     {
@@ -57,7 +58,7 @@ class Animation
     {
       playback->updateStepTime(6.0f, true);
 
-      playback->ledIndex = sineEaseIn(playback->normalizedStepTime) * playback->pixelCount;
+      playback->ledIndex = quadraticEaseInOut(playback->normalizedStepTime) * playback->pixelCount;
       
       for (int i = 0; i < playback->pixelCount; i++)
       {

@@ -104,6 +104,7 @@ class Playback
       stepTicks = 0;
       normalizedStepTime = 0;
       stepStartMs = getMs();
+      lastUpdateTime = stepStartMs;
     }
         
     void sequenceEnd()

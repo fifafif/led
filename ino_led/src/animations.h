@@ -11,7 +11,7 @@
 class Animations
 {
   public:
-    const int ANIMATION_COUNT = 12;
+    const int ANIMATION_COUNT = 13;
     const int OVERDRIVE_ANIMATION_COUNT = 2;
     
     const byte switchAutoModeEveryTickCount = 2;
@@ -47,7 +47,7 @@ class Animations
       animations = new Animation*[ANIMATION_COUNT];
       animations[0] = new CylonAnimation(playback, stripHandler, 100); 
       animations[1] = new FireboltAnimation(playback, stripHandler, 60);
-      animations[2] = new SegmentAnimation(playback, stripHandler, 0, 30);
+      animations[2] = new SegmentAnimation(playback, stripHandler, 0, 50);
       animations[3] = new SegmentAnimation(playback, stripHandler, 1, 30);
       animations[4] = new DropsTimeAnimation(playback, stripHandler, 50);
       animations[5] = new SparksAnimation(playback, stripHandler);
@@ -57,12 +57,13 @@ class Animations
       animations[9] = new SineWaveAnimation(playback, stripHandler, 2);
       animations[10] = new SegmentFillAnimation(playback, stripHandler, 6);
       animations[11] = new StarsAnimation(playback, stripHandler, 6);
+      animations[12] = new MovingStarsAnimation(playback, stripHandler, 10);
 
       overdriveAnimations = new Animation*[OVERDRIVE_ANIMATION_COUNT];
       overdriveAnimations[0] = new CylonAnimation(playback, stripHandler, 100); 
       overdriveAnimations[1] = new FireboltAnimation(playback, stripHandler, 60);
 
-      debugAnimationIndex = 10;
+      debugAnimationIndex = 2;
       choseRandomAnimation();
     }
 
@@ -89,6 +90,7 @@ class Animations
 
         animations[currentAnimationIndex]->onSequenceStart();
         animations[currentAnimationIndex]->onStepStart();
+        changeColor();
       }
       else if (playback->isStepEnd)
       {

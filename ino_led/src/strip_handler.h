@@ -65,6 +65,10 @@ class StripHandler {
     {
       colorWheelPosition = wheelPos;
       rgbFromWheel(wheelPos, redValue, greenValue, blueValue);
+
+      #if defined(LED_SIM_ONLY)
+      logColor(redValue, greenValue, blueValue);      
+      #endif
     }
 
     void generateRandomStripValues()

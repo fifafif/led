@@ -8,6 +8,133 @@
 #include "colors.h"
 #include "playback.h"
 
+
+class MovingStarsAnimation : public Animation
+{
+  public:
+    int length;
+    float fadeSpeed;
+    float *starPositions;
+    float *starSpeeds;
+    int *starWidths;
+    const int STAR_COUNT = 10;
+    const float MIN_SPEED = 20;
+    const float MAX_SPEED = 60;
+
+    MovingStarsAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    {
+      this->length = length;
+      fadeSpeed = 1.0f;
+      starPositions = new float[STAR_COUNT];
+      starSpeeds = new float[STAR_COUNT];
+      starWidths = new int[STAR_COUNT];
+
+      for (int i = 0; i < STAR_COUNT; i++)
+      {
+        starPositions[i] = random(playback->pixelCount);
+        starWidths[i] = (int)random(6, 30);
+      }
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(4.0f, true)) return;
+
+      // byte fade = round(255 * fadeSpeed * playback->deltaTime);
+      strip->clearColor();
+      strip->clearRandomStripValues();
+
+      for (int i = 0; i < STAR_COUNT; i++)
+      {
+        float position = starPositions[i];
+
+        //logNumbers(position, playback->deltaTime);
+        position += (int)round(starSpeeds[i] * playback->deltaTime);
+        if (position > playback->pixelCount)
+        {
+          position -= playback->pixelCount;
+        }
+        else if (position < 0)
+        {
+          position += playback->pixelCount;
+        }
+
+        starPositions[i] = position;
+
+       drawStar((int)round(position), starWidths[i]);
+      }
+    }
+
+    void drawStar(int index, int length)
+    {
+        int start = index - length;
+        int end = index + length;
+
+        for (int i = start; i < end; i++)
+        {
+          float c;
+          if (i < index)
+          {
+            c = 1.0f * (i - start) / length;
+          }
+          else if (i > index)
+          {
+            c = 1.0f * (end - i) / length;
+          }
+          else
+          {
+            c = 1;
+          }
+
+          int ii = i;
+          if (ii < 0)
+          {
+            ii += playback->pixelCount;
+          }
+          else if (ii >= playback->pixelCount)
+          {
+            ii -= playback->pixelCount;
+          }
+
+          // Serial.print(ii);
+          // Serial.print(",");
+          c = max(strip->stripValues[ii] / 255.0f, c); 
+          strip->stripValues[ii] = (byte)(c * 255);
+          strip->setPixelColor(ii, c);
+        }
+    }
+
+    void onStart()
+    {
+      strip->clearRandomStripValues();
+      strip->clearColor();
+      generateRandomSpeed();
+    }
+
+    void onSequenceStart()
+    {
+      generateRandomSpeed();
+    }
+
+    void generateRandomSpeed()
+    {
+        // Serial.print("speeds ");
+      for (int i = 0; i < STAR_COUNT; i++)
+      {
+        int speed = random(MIN_SPEED, MAX_SPEED);
+        if (random(2) > 0)
+        {
+          speed = -speed;
+        }
+
+        starSpeeds[i] = speed;
+
+        // Serial.println(starSpeeds[i]);
+      }
+    }
+};
+
+
 class StarsAnimation : public Animation
 {
   public:
