@@ -134,6 +134,14 @@ void logLedSim(char *message)
 #endif
 }
 
+void logLedSim(char *message, float num)
+{
+#if defined(LED_SIM_ONLY) && defined(LED_SIM_DEBUG)
+  Serial.print(message);
+  Serial.println(num);
+#endif
+}
+
 void logNumbers(float num1, float num2)
 {
   Serial.print(num1);

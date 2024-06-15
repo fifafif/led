@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class LEDPlane : MonoBehaviour
@@ -7,7 +8,11 @@ public class LEDPlane : MonoBehaviour
 
     private void Awake()
     {
-        
+        serialArrayReader.OnColorChanged += OnColorChanged;
+    }
+
+    private void OnColorChanged(Color color)
+    {
     }
 
     private void Update()

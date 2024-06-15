@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO.Ports;
 using System;
+using System.Text;
 
 public class SerialArrayReader : MonoBehaviour
 {
     public Color[] Colors { get; private set; }
     public bool IsInit { get; private set; }
-    
+    public Action<Color> OnColorChanged { get; set; }
+    public Action<string> OnSerialMessage { get; set; }
+
     public string portName = "COM3";
     public int baudRate = 115200;
     public int arraySize = 300;
@@ -19,6 +22,7 @@ public class SerialArrayReader : MonoBehaviour
     private int totalBytes;
     private List<byte> buffer;
     private double lastUpdateTime;
+    private Color color = new Color(0f, 1f, 0f);
 
     private void Awake()
     {
@@ -41,6 +45,19 @@ public class SerialArrayReader : MonoBehaviour
     private void OnDestroy()
     {
         Disconnect();
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            OpenConnection();
+        }
+
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            Disconnect();
+        }
     }
 
     private IEnumerator ReadBytesUntilNewline()
@@ -109,7 +126,21 @@ public class SerialArrayReader : MonoBehaviour
 
     void ParseArray(List<byte> byteArray)
     {
-        //Debug.Log(byteArray.Count);
+        if (byteArray.Count == 4
+            && byteArray[0] == '#')
+        {
+            ParseColorChange(byteArray);
+            return;
+        }
+
+        // Let's assume 30 is max length of a message.
+        if (byteArray.Count <= 30)
+        {
+            var message = Encoding.ASCII.GetString(buffer.ToArray());
+            OnSerialMessage?.Invoke(message);
+            return;
+        }
+
         if (byteArray.Count < totalBytes) return;
 
         Debug.Log($"Update duration={Time.unscaledTimeAsDouble - lastUpdateTime:N3}");
@@ -121,12 +152,9 @@ public class SerialArrayReader : MonoBehaviour
             {
                 for (int i = 0; i < arraySize; i++)
                 {
-                    byte color = byteArray[i];
-                    //red = (byte)(color & 0b01);
+                    float value = byteArray[i] / 255f;
 
-                    //Debug.Log($"{i}={red},{green},{blue}");
-
-                    Colors[i] = new Color(0f, color / 255f, 0f);
+                    Colors[i] = color * value;
                 }
             }
             else
@@ -149,5 +177,17 @@ public class SerialArrayReader : MonoBehaviour
         {
             Debug.LogError("Failed to parse array: " + e.Message);
         }
+    }
+
+    private void ParseColorChange(List<byte> byteArray)
+    {
+        byte red = byteArray[1];
+        byte green = byteArray[2];
+        byte blue = byteArray[3];
+
+        //Debug.Log($"{i}={red},{green},{blue}");
+
+        color = new Color(red / 255f, green / 255f, blue / 255f);
+        OnColorChanged?.Invoke(color);
     }
 }

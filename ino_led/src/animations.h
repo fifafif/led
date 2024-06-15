@@ -42,13 +42,12 @@ class Animations
     {
       this->playback = playback;
       this->strip = stripHandler;
-      this->animation = new CylonAnimation(playback, stripHandler, 100);
       
       animations = new Animation*[ANIMATION_COUNT];
       animations[0] = new CylonAnimation(playback, stripHandler, 100); 
       animations[1] = new FireboltAnimation(playback, stripHandler, 60);
       animations[2] = new SegmentAnimation(playback, stripHandler, 0, 50);
-      animations[3] = new SegmentAnimation(playback, stripHandler, 1, 30);
+      animations[3] = new SegmentAnimation(playback, stripHandler, 1, 50);
       animations[4] = new DropsTimeAnimation(playback, stripHandler, 50);
       animations[5] = new SparksAnimation(playback, stripHandler);
       animations[6] = new GrowAnimation(playback, stripHandler, 1);
@@ -63,7 +62,7 @@ class Animations
       overdriveAnimations[0] = new CylonAnimation(playback, stripHandler, 100); 
       overdriveAnimations[1] = new FireboltAnimation(playback, stripHandler, 60);
 
-      debugAnimationIndex = 1;
+      debugAnimationIndex = 10;
       choseRandomAnimation();
     }
 
@@ -218,7 +217,7 @@ class Animations
 
     void beat()
     {
-      animations[currentAnimationIndex]->onBeat();
+      animations[currentAnimationIndex]->beat();
     }
 };
 

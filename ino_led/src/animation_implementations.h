@@ -38,7 +38,7 @@ class MovingStarsAnimation : public Animation
 
     void update()
     {
-      if (playback->updateStepTime(4.0f, true)) return;
+      if (playback->updateStepTime(4.0f)) return;
 
       // byte fade = round(255 * fadeSpeed * playback->deltaTime);
       strip->clearColor();
@@ -152,7 +152,7 @@ class StarsAnimation : public Animation
 
     void update()
     {
-      if (playback->updateStepTime(2.0f, true)) return;
+      if (playback->updateStepTime(2.0f)) return;
 
       byte fade = round(255 * fadeSpeed * playback->deltaTime);
       
@@ -239,7 +239,7 @@ class SegmentFillAnimation : public Animation
 
     void update()
     {
-      if (playback->updateStepTime(0.75f, segmentCount, false)) return;
+      if (playback->updateStepTime(0.75f, segmentCount)) return;
 
       int start = currentSegmentIndex * segmentWidth;
       int end = start + segmentWidth;
@@ -262,6 +262,11 @@ class SegmentFillAnimation : public Animation
           strip->setPixelColor(i, c);
         }
       }
+    }
+
+    void onBeat()
+    {
+      playback->stepTimeEnd();
     }
 
     void onSequenceStart()
@@ -318,7 +323,7 @@ class SineWaveAnimation : public Animation
 
     void update()
     {
-      if (playback->updateStepTime(5, true)) return;
+      if (playback->updateStepTime(5)) return;
       
       for (int i = 0; i < playback->pixelCount; i++)
       {
@@ -348,7 +353,7 @@ class PulseAnimation : public Animation
 
     void update()
     {
-      if (playback->updateStepTime(3.0f, true)) return;
+      if (playback->updateStepTime(3.0f)) return;
 
       const float f = 0.8;
       float c = playback->normalizedStepTime;
@@ -405,7 +410,7 @@ class GrowAnimation : public Animation
 
     void update()
     {
-      if (playback->updateStepTime(duration, 2, false)) return;
+      if (playback->updateStepTime(duration, 2)) return;
       
       byte tailLength = 30;
       bool isUp = playback->sequenceStep % 2 == 0;
@@ -448,9 +453,9 @@ class SparksAnimation : public Animation
 
     void update()
     {
-      if (playback->updateStepTime(1.5f, true)) return;
+      if (playback->updateStepTime(1)) return;
 
-      float t = easeIn(playback->normalizedStepTime);
+      float t = quadraticEaseIn(playback->normalizedStepTime);
       const byte speed = 4;
 
       for (int i = 0; i < playback->pixelCount; i++)
@@ -469,6 +474,12 @@ class SparksAnimation : public Animation
     {
       strip->generateRandomStripValues();
     }
+
+    void onBeat()
+    {
+      // FIX: COntinue in sequence time
+      playback->startStepTime();
+    }
 };
 
 class DropsTimeAnimation : public Animation
@@ -479,19 +490,30 @@ class DropsTimeAnimation : public Animation
     DropsTimeAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
     {
       this->length = length;
+      beatDuration = 0.5f;
     }
 
     void update()
     {
-      if (playback->updateStepTime(4.0f, true)) return;
+      if (playback->updateStepTime(4.0f)) return;
+
+      float t = clamp01(getElapsedBeatFactor());
+      Serial.print("t: ");
+      Serial.println(t);
 
       for (int i = 0; i < playback->pixelCount; i++)
       {
         int ii = (i + playback->ledIndex) % playback->pixelCount;
-        int segmentCount = playback->pixelCount / length;
         float c = 1.0 * (i % length) / length;
+
+        c = easeIn(c);
+
+        strip->stripValues[ii] = c * 255;
         strip->setPixelColor(ii, c);
       }
+
+      centerGlowBeat(200, 0.5f, 1.0f);
+      // centerGlowBeat(100, 0.4f, 1.0f, true);
     }
 };
 
@@ -544,12 +566,21 @@ class SegmentAnimation : public Animation
 
       updateSegment(s, length);
     }
+
+    void onBeat()
+    {
+      playback->moveTime(-0.1f);
+    }
 };
 
 class FireboltAnimation : public Animation
 {
   public:
+    const float FADE_SPEED = 0.75f;
+    const float BEAT_MAX_VALUE = 0.75f;
+    
     int length;
+    float beatValue = 0;
 
     FireboltAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
     {
@@ -558,25 +589,34 @@ class FireboltAnimation : public Animation
 
     void update()
     {
-      if (playback->updateStepTime(2.0f, true)) return;
+      if (playback->updateStepTime(2.0f)) return;
 
       playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+
+      if (beatValue > 0)
+      {
+        beatValue -= playback->deltaTime * FADE_SPEED;
+        if (beatValue < 0)
+        {
+          beatValue = 0;
+        } 
+      }
 
       for (int i = 0; i < playback->pixelCount; i++)
       {
         float c = inverseLerp(playback->ledIndex - length, playback->ledIndex, i);
         c = easeOut(c);
+        c += beatValue;
+
         if (i > playback->ledIndex)
         {
-          c = 0;
+          c = beatValue;
         }
-        else
-        {
-          byte value = strip->stripValues[i];
-          value -= 10;
-          strip->stripValues[i] = value;
-          c *= value / 255.0;
-        }
+       
+        byte value = strip->stripValues[i];
+        value -= 10;
+        strip->stripValues[i] = value;
+        c *= value / 255.0;
 
         strip->setPixelColor(i, clamp01(c));
       }
@@ -590,8 +630,7 @@ class FireboltAnimation : public Animation
 
     void onBeat()
     {
-      playback->stepTimeEnd();
-      playback->sequenceEnd();
+      beatValue = BEAT_MAX_VALUE;
     }
 };
 
@@ -599,35 +638,38 @@ class CylonAnimation : public Animation
 {
   public:
     int length;
+    float beatLength;
+    const float MAX_BEAT_LENGTH_PERCENT = 50;
+    const float BEAT_FADE_DURATION = 0.5f;
+    const float BEAT_VALUE = 0.5f;
+    float maxBeatLength;
 
     CylonAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
     {
       this->length = length;
+      maxBeatLength = playback->pixelCount * MAX_BEAT_LENGTH_PERCENT * 0.01f;
     }
 
     void update()
     {
-      cylon(length);
-    }
+      if (playback->updateStepTime(1.0f, 2)) return;
 
-    void cylon(int length)
-    {
-      if (playback->updateStepTime(2.0f, true)) return;
-
-      bool isReverse = playback->normalizedStepTime > 0.5;
-      if (isReverse)
-      {
-        playback->normalizedStepTime -= 0.5;
-      }
-
-      playback->normalizedStepTime *= 2;
-
+      bool isReverse = playback->sequenceStep % 2 == 1;
       int ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
-      length = lerp(length / 2, length, playback->normalizedStepTime);
+      int currentLength = lerp(length / 2, length, playback->normalizedStepTime);
+
+      if (beatLength > 0)
+      {
+        beatLength -= playback->deltaTime * maxBeatLength / BEAT_FADE_DURATION;
+        if (beatLength < 0)
+        {
+          beatLength = 0;
+        }
+      }
 
       for (int i = 0; i < playback->pixelCount; i++)
       {
-        float c = inverseLerp(ledIndex - length, ledIndex, i);
+        float c = inverseLerp(ledIndex - currentLength, ledIndex, i);
         c = easeIn(c);
         if (i > ledIndex)
         {
@@ -636,10 +678,19 @@ class CylonAnimation : public Animation
 
         if (isReverse) {
           strip->setPixelColor(i, c);
+          strip->stripValues[i] = c * 255;
         } else {
           strip->setPixelColor(playback->pixelCount - i - 1, c);
+          strip->stripValues[playback->pixelCount - i - 1] = c * 255;
         }
       }
+
+      centerGlowBeat(beatLength, BEAT_VALUE);
+    }
+
+    void onBeat()
+    {
+      beatLength = maxBeatLength;
     }
 };
 

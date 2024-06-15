@@ -35,9 +35,14 @@ class Playback
       this->pixelCount = pixelCount;
     }
 
-    bool updateStepTime(float stepDuration, int stepCount, bool isChangingColor)
+    bool updateStepTime(float stepDuration)
     {
-      if (updateStepTime(stepDuration))
+      return updateStepTime(stepDuration, true);
+    }
+
+    bool updateStepTime(float stepDuration, int stepCount)
+    {
+      if (updateStepTime(stepDuration, false))
       {
         if (sequenceStep >= stepCount)
         {
@@ -51,19 +56,10 @@ class Playback
         //     // writeSerialColor();
         //   }
         // }
-        // else
-        // {
-        //   stepTimeEnd();
-        // }
         return true;
       }
 
       return false;
-    }
-
-    bool updateStepTime(float stepDuration)
-    {
-      return updateStepTime(stepDuration, false);
     }
 
     bool updateStepTime(float stepDuration, bool isLastStep)
@@ -141,12 +137,6 @@ class Playback
         return;
       }*/
 
-      /*
-      if (mode == 255
-          && tickCount % switchAutoModeEveryTickCount == 0)
-      {
-        choseRandomSequence();
-      }*/
 
       if (!isSlave)
       {
@@ -154,10 +144,9 @@ class Playback
       }
     }
 
-    void sequenceEnd(byte sequenceMode)
+    void moveTime(float duration)
     {
-      sequenceEnd();
-      //randomMode = sequenceMode;
+      stepStartMs += duration * 1000;
     }
 };
 #endif

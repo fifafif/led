@@ -7,8 +7,8 @@
 class BeatSimulator
 {
     public:
-        const int BEAT_IN_ROW = 8;
-        const int BEAT_PAUSE = 4;
+        const int BEAT_IN_ROW = 16;
+        const int BEAT_PAUSE = 8;
 
         Animations *animations;
         float BPM;
