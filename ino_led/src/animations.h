@@ -62,7 +62,7 @@ class Animations
       overdriveAnimations[0] = new CylonAnimation(playback, stripHandler, 100); 
       overdriveAnimations[1] = new FireboltAnimation(playback, stripHandler, 60);
 
-      debugAnimationIndex = 10;
+      // debugAnimationIndex = 10;
       choseRandomAnimation();
     }
 

@@ -4,7 +4,7 @@
 #define LED_SIM_PRINT
 #define LED_SIM_PRINT_BYTES
 #define LED_SIM_PRINT_BYTES_BRIGHTNESS
-#define BEAT_SIMULATOR
+// #define BEAT_SIMULATOR
 
 #if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
 #define LED_NEOPIXEL
@@ -77,7 +77,7 @@ const bool IS_BEAT_REACTIVE = false;
 byte redValueDMX = 255;
 byte greenValueDMX = 255;
 byte blueValueDMX = 0;
-float brightness = 1;
+float brightness = 1.0f;
 byte stroboMode = 0;
 byte mode = 255;
 
@@ -120,7 +120,13 @@ void showStrip();
 void setup () 
 {
   stripHandler.pixelCount = NUMPIXELS;
+
+#if defined(LED_SIM_ONLY)
   stripHandler.strip = strip;
+#else
+  stripHandler.strip = &strip;
+#endif
+  
   stripHandler.brightness = brightness;
   stripHandler.stripValues = stripValues;
 

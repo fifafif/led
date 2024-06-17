@@ -1,6 +1,16 @@
 #ifndef STRIP_HANDLER_H
 #define STRIP_HANDLER_H
 
+#if !defined(LED_SIM_ONLY)
+
+#if defined(LED_NEOPIXEL)
+#include <Adafruit_NeoPixel.h>
+#else
+#include <LiteLED.h>
+#endif
+
+#endif
+
 #include <Arduino.h>
 #include "colors.h"
 
