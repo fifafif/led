@@ -35,6 +35,36 @@ class StripHandler {
     #endif
     #endif
 
+    void maxValue(int i, float value)
+    {
+      byte valueByte = byte(value * 255);
+      if (valueByte < stripValues[i]) return;
+
+      stripValues[i] = valueByte;
+      setPixelColor(i, value);
+    }
+
+    void addValue(int i, float value)
+    {
+      byte valueByte = byte(value * 255);
+      word sum = word(value * 255) + stripValues[i];
+      if (sum > 255)
+      {
+        sum = 255;
+      }
+
+      stripValues[i] = sum;
+      setPixelColor(i, sum / 255.0f);
+    }
+
+    void setValue(int i, float value)
+    {
+      byte valueByte = byte(value * 255);
+      
+      stripValues[i] = valueByte;
+      setPixelColor(i, value);
+    }
+
     void setPixelColor(int i, float c)
     {
       c *= brightness;
@@ -102,6 +132,14 @@ class StripHandler {
       setColorToAll((uint32_t)0);
     }
 
+    void setValueToAll(byte value)
+    {
+      for (int i = 0; i < pixelCount; i++)
+      {
+        stripValues[i] = value;
+      }
+    }
+
     void setColorToAll(uint32_t color)
     {
       for (int i = 0; i < pixelCount; i++)
@@ -116,6 +154,18 @@ class StripHandler {
       uint32_t color = getColor(c * redValue, c * greenValue, c * blueValue);
       for (int i = 0; i < pixelCount; i++)
       {
+        setPixelColor(i, color);
+      }
+    }
+
+    void setValueAndColorToAll(float c)
+    {
+      byte value = byte(c * 255);
+      c *= brightness;
+      uint32_t color = getColor(c * redValue, c * greenValue, c * blueValue);
+      for (int i = 0; i < pixelCount; i++)
+      {
+        stripValues[i] = value;
         setPixelColor(i, color);
       }
     }

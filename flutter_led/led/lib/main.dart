@@ -64,7 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
   double _brightnessValue = 1;
   double _speedValue = 1;
 
-  Client client = Client("192.168.1.1");  
+  Client client = Client("192.168.4.1");  
 
   void _incrementCounter() {
     setState(() {

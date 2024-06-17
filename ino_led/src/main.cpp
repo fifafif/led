@@ -1,10 +1,14 @@
 //#define DMX_ON
+
+#define IS_WIFI_ENABLED
+
+// LED Debug
 #define LED_SIM_ONLY
 #define LED_SIM_DEBUG
 #define LED_SIM_PRINT
 #define LED_SIM_PRINT_BYTES
 #define LED_SIM_PRINT_BYTES_BRIGHTNESS
-// #define BEAT_SIMULATOR
+#define BEAT_SIMULATOR
 
 #if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
 #define LED_NEOPIXEL
@@ -41,6 +45,10 @@
 #include "animations.h"
 #include "beat_simulator.h"
 
+#if defined(IS_WIFI_ENABLED)
+#include "wifi_web_server.h"
+#endif
+
 #if defined(ARDUINO_LOGIC)
 #define LED_ONBOARD LED_BUILTIN
 #define BUTTON_IN 3
@@ -65,6 +73,10 @@ Adafruit_NeoPixel strip(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 #else
 LiteLED strip(LED_STRIP_WS2812, 0);
 #endif
+#endif
+
+#if defined(IS_WIFI_ENABLED)
+
 #endif
 
 // ============================================= CONFIG ==========================================
@@ -99,6 +111,13 @@ Animations animations(&playback, &stripHandler);
 
 #if defined(BEAT_SIMULATOR)
 BeatSimulator beatSimulator(&animations, 145);
+#endif
+
+#if defined(IS_WIFI_ENABLED)
+//WifiServer wifiServer;
+// Animations *WifiServer::animations = animations;  
+// StripHandler *WifiServer::strip = strip;  
+// WifiServer wifiServer(&animations, &stripHandler);  
 #endif
 
 // Overdrive
@@ -155,6 +174,11 @@ void setup ()
   brightness = 1;
 #endif
 
+#if defined(IS_WIFI_ENABLED)
+  // wifiServer.connect();
+  setupWifi(&stripHandler, &playback);
+#endif
+
   setupSerial(IS_SLAVE);
   animations.setAsSlave(IS_SLAVE);
 }
@@ -166,12 +190,15 @@ void loop()
   readOverrideButton();
   readSerial();
 
-  #if defined(BEAT_SIMULATOR)
+#if defined(BEAT_SIMULATOR)
   beatSimulator.update();
-  #endif
+#endif
 
   animations.update();
-  // testSequence();
+
+#if defined(IS_WIFI_ENABLED)
+  loopWifi();
+#endif
 
   showStrip();
 }
@@ -235,7 +262,6 @@ void readBeat()
   lastBeatState = beatState;
 }
 
-
 void beat()
 {
   log("beat!");
@@ -244,20 +270,6 @@ void beat()
   if (getMs() - playback.stepStartMs < 200) return;
 
   ticksSinceLastBeat = 0;
-/*
-  if (isBeatResettingSequence)
-  {
-    stepTimeEnd();
-  }
-  else if (isBeatChangingColor)
-  {
-    changeColor();
-    writeSerialColor();
-  }
-  else
-  {
-    sequenceEnd();
-  }*/
 }
 
 void readOverrideButton()
@@ -292,15 +304,6 @@ void startOverdrive(byte index)
   animations.currentOverdriveAnimationIndex = index;
   startOverdrive();
 }
-
-/*
-void copyHalfStrip()
-{
-  for (int i = CENTERPIX; i < NUMPIXELS; i++)
-  {
-    setPixelColor(i, getPixelColor(NUMPIXELS - i));
-  }
-}*/
 
 void writeSerialColor()
 {

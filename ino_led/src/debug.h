@@ -59,11 +59,13 @@ void logStripBytes(uint32_t *strip, int length)
 
 void logColor(byte r, byte b, byte g)
 {
+#if defined(LED_SIM_ONLY) && defined(LED_SIM_PRINT) 
     Serial.print('#');
     Serial.write(r);
     Serial.write(g);
     Serial.write(b);
     Serial.println();
+#endif
 }
 
 void logStrip(uint32_t *strip, int length)

@@ -29,6 +29,7 @@ class Playback
     bool isSlave;
     int pixelCount;
     int animationPlayCount;
+    byte speed = 127;
 
     Playback(int pixelCount)
     {
@@ -64,11 +65,13 @@ class Playback
 
     bool updateStepTime(float stepDuration, bool isLastStep)
     {
+      float speedFactor = (float)speed / 127.0f;
       unsigned long ms = getMs();
-      deltaTime = 0.001f * (ms - lastUpdateTime);
+      deltaTime = 0.001f * (ms - lastUpdateTime) * speedFactor;
       lastUpdateTime = ms;
       unsigned long elapsedMs = ms - stepStartMs;
       normalizedStepTime = elapsedMs / (stepDuration * 1000);
+      normalizedStepTime *= speedFactor;
       ledIndex = (int)(normalizedStepTime * pixelCount) % pixelCount;
       isTickEnd = false;
       isStepEnd = false;
@@ -92,7 +95,7 @@ class Playback
     {
       String msg = "step end. ms=";
       msg = msg + getMs();
-      log(msg);
+      logLedSim(msg);
       startStepTime();
       sequenceStep += 1;
       isStepEnd = true;
@@ -114,7 +117,7 @@ class Playback
         return;
       }*/
 
-      log("sequence end");
+      logLedSim("sequence end");
       
       if (isSlave)
       {

@@ -11,7 +11,7 @@
 class Animations
 {
   public:
-    const int ANIMATION_COUNT = 13;
+    const int ANIMATION_COUNT = 14;
     const int OVERDRIVE_ANIMATION_COUNT = 2;
     
     const byte switchAutoModeEveryTickCount = 2;
@@ -35,7 +35,6 @@ class Animations
     byte colorWheelStep = 255 / 6;
     byte colorStepCount = 6;
     int colorIndex = 0;
-    byte colorWheelPosition;
     byte slaveColorMode = 0;
 
     Animations(Playback *playback, StripHandler *stripHandler)
@@ -54,15 +53,17 @@ class Animations
       animations[7] = new PingPongAnimation(playback, stripHandler, 100);
       animations[8] = new PulseAnimation(playback, stripHandler, 100);
       animations[9] = new SineWaveAnimation(playback, stripHandler, 2);
-      animations[10] = new SegmentFillAnimation(playback, stripHandler, 6);
+      // animations[10] = new SegmentFillAnimation(playback, stripHandler, 6);
+      animations[10] = new StarsAnimation(playback, stripHandler, 6);
       animations[11] = new StarsAnimation(playback, stripHandler, 6);
       animations[12] = new MovingStarsAnimation(playback, stripHandler, 10);
+      animations[13] = new MovingFirebolsAnimation(playback, stripHandler, 10);
 
       overdriveAnimations = new Animation*[OVERDRIVE_ANIMATION_COUNT];
       overdriveAnimations[0] = new CylonAnimation(playback, stripHandler, 100); 
       overdriveAnimations[1] = new FireboltAnimation(playback, stripHandler, 60);
 
-      // debugAnimationIndex = 10;
+      // debugAnimationIndex = 13;
       choseRandomAnimation();
     }
 
@@ -187,7 +188,7 @@ class Animations
       }
       else if (colorMode == 4)
       {
-        updateSlaveColor(getSerialMessageColor());
+        //updateSlaveColor(getSerialMessageColor());
       }
     }
 

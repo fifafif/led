@@ -9,6 +9,131 @@
 #include "playback.h"
 
 
+class MovingFirebolsAnimation : public Animation
+{
+  public:
+    int length;
+    float fadeSpeed;
+    float *starPositions;
+    float *starSpeeds;
+    int *starWidths;
+    const int STAR_COUNT = 10;
+    const int MIN_SPEED = 20;
+    const int MAX_SPEED = 200;
+    const int MIN_WIDTH = 10;
+    const int MAX_WIDTH = 50;
+
+    MovingFirebolsAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    {
+      this->length = length;
+      fadeSpeed = 1.0f;
+      starPositions = new float[STAR_COUNT];
+      starSpeeds = new float[STAR_COUNT];
+      starWidths = new int[STAR_COUNT];
+
+      for (int i = 0; i < STAR_COUNT; i++)
+      {
+        starPositions[i] = random(playback->pixelCount);
+        starWidths[i] = (int)random(MIN_WIDTH, MAX_WIDTH);
+      }
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(4.0f)) return;
+
+      strip->clearColor();
+      strip->clearRandomStripValues();
+
+      float f = sin(playback->normalizedStepTime * 70);
+      f += sin(playback->normalizedStepTime * 40);
+      f = f * 0.25 + 0.5;
+      f = f * 0.2 + 0.4;
+      // Serial.println(f);
+
+      for (int i = 0; i < strip->pixelCount; i++)
+      {
+        f += random(-0.1, 0.1); 
+        strip->setValue(i, f);
+      }
+
+      float time = playback->deltaTime * (easeOut(playback->normalizedStepTime) * 0.7f + 0.3f);
+      for (int i = 0; i < STAR_COUNT; i++)
+      {
+        float position = starPositions[i];
+        position += (int)round(starSpeeds[i] * time);
+        if (position > playback->pixelCount + starWidths[i])
+        {
+          starSpeeds[i] = random(MIN_SPEED, MAX_SPEED);
+          position = -starWidths[i];
+        }
+
+        starPositions[i] = position;
+
+        drawFirebolt((int)round(position), starWidths[i]);
+      }
+    }
+
+    void drawStar(int index, int length)
+    {
+        int start = index - length;
+        int end = index + length;
+
+        for (int i = start; i < end; i++)
+        {
+          if (i < 0 || i > playback->pixelCount) continue;
+
+          float f = inverseLerp(start, end, i);
+          float c = sin((f * f * f * f) * PI);
+
+          strip->addValue(i, c);
+        }
+    }
+
+    void drawFirebolt(int index, int length)
+    {
+        int start = index - length;
+        int end = index + length / 5;
+        
+        for (int i = index; i < end; i++)
+        {
+          if (i < 0 || i > playback->pixelCount) continue;
+
+          strip->addValue(i, 1);
+        }
+
+        for (int i = start; i < index; i++)
+        {
+          if (i < 0 || i > playback->pixelCount) continue;
+
+          float c = easeIn(inverseLerp(start, index, i));
+
+          strip->addValue(i, c * .8f);
+        }
+    }
+
+
+    void onStart()
+    {
+      strip->clearRandomStripValues();
+      strip->clearColor();
+      generateRandomSpeed();
+    }
+
+    void onSequenceStart()
+    {
+      generateRandomSpeed();
+    }
+
+    void generateRandomSpeed()
+    {
+      for (int i = 0; i < STAR_COUNT; i++)
+      {
+        starSpeeds[i] = random(MIN_SPEED, MAX_SPEED);
+      }
+    }
+};
+
 class MovingStarsAnimation : public Animation
 {
   public:
@@ -133,7 +258,6 @@ class MovingStarsAnimation : public Animation
       }
     }
 };
-
 
 class StarsAnimation : public Animation
 {
@@ -288,9 +412,6 @@ class SegmentFillAnimation : public Animation
 
     void onStepStart()
     {
-      Serial.print("Step start: ");
-      Serial.println(playback->sequenceStep);
-
       if (playback->sequenceStep > 0)
       {
         int start = currentSegmentIndex * segmentWidth;
@@ -498,8 +619,6 @@ class DropsTimeAnimation : public Animation
       if (playback->updateStepTime(4.0f)) return;
 
       float t = clamp01(getElapsedBeatFactor());
-      Serial.print("t: ");
-      Serial.println(t);
 
       for (int i = 0; i < playback->pixelCount; i++)
       {
