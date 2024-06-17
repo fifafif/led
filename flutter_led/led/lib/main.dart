@@ -59,10 +59,9 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
 
   int _counter = 0;
-  double _currentSliderValue = 0;
   double _hueValue = 0;
-  double _brightnessValue = 1;
-  double _speedValue = 1;
+  double _brightnessValue = 255;
+  double _speedValue = 127;
 
   Client client = Client("192.168.4.1");  
 
@@ -129,6 +128,34 @@ class _MyHomePageState extends State<MyHomePage> {
                   setState(() {
                     _hueValue = value.toDouble();
                   });
+                });
+              },
+            ),
+            const Text(
+              'Speed:',
+            ),
+            Slider(
+              min: 0,
+              max: 255,
+              value: _speedValue,
+              onChanged: (value) {
+                setState(() {
+                  _speedValue = value;
+                  client.sendSpeed(_speedValue.toInt());
+                });
+              },
+            ),
+            const Text(
+              'Brightness:',
+            ),
+            Slider(
+              min: 0,
+              max: 255,
+              value: _brightnessValue,
+              onChanged: (value) {
+                setState(() {
+                  _brightnessValue = value;
+                  client.sendBrightness(_brightnessValue.toInt());
                 });
               },
             ),

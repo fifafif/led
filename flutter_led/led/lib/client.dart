@@ -4,13 +4,27 @@ class Client{
   
   String ip;
 
-  Client(this.ip){
+  Client(this.ip);
+
+  
+  void sendSpeed(int value) async 
+  {
+    print("sendColor $value");
+    var response = await fetchRequest("set-speed?speed=$value");
+    print(response.statusCode);
+  }
+
+  void sendBrightness(int value) async 
+  {
+    print("sendBrightness $value");
+    var response = await fetchRequest("set-brightness?brightness=$value");
+    print(response.statusCode);
   }
 
   Future<int> fetchColor() async
   {
     var response = await fetchRequest("get-color");
-    print("response $response");
+    print("response statusCode: ${response.statusCode}");
 
     if (response.statusCode == 200)
     {
@@ -23,7 +37,7 @@ class Client{
   void sendColor(int hue) async
   {
     print("sendColor $hue");
-    var response = await fetchRequest("set-color/$hue");
+    var response = await fetchRequest("set-color?hue=$hue");
     print(response.statusCode);
   }
 
