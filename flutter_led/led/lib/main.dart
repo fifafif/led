@@ -62,14 +62,41 @@ class _MyHomePageState extends State<MyHomePage> {
   double _hueValue = 0;
   double _brightnessValue = 255;
   double _speedValue = 127;
+  int _hueColor = 0;
 
   Client client = Client("192.168.4.1");  
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
+
+    Color rgbFromWheel(int WheelPos)
+    {
+        int redValue, greenValue, blueValue;
+
+        WheelPos = 255 - WheelPos;
+        if (WheelPos < 85)
+        {
+            redValue = 255 - WheelPos * 3;
+            greenValue = 0;
+            blueValue = WheelPos * 3;
+        }
+        else if (WheelPos < 170)
+        {
+            WheelPos -= 85;
+            redValue = 0;
+            greenValue = WheelPos * 3;
+            blueValue = 255 - WheelPos * 3;
+        }
+        else
+        {
+            WheelPos -= 170;
+            redValue = WheelPos * 3;
+            greenValue = 255 - WheelPos;
+            blueValue = 0;
+        }
+
+        return new Color(0xFF << 24 | redValue << 16 | greenValue << 8 | blueValue);
+    }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -102,17 +129,16 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            const Image(
+              image: AssetImage('assets/t_hue_colors.png'),
+              width: double.infinity,
+              fit: BoxFit.cover,
             ),
             Slider(
               min: 0,
               max: 255,
               value: _hueValue,
+              activeColor: rgbFromWheel(_hueValue.toInt()),
               onChanged: (value) {
                 setState(() {
                   _hueValue = value;

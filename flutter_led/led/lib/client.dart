@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:http/http.dart' as http;
 
-class Client{
-  
+class Client {
+
+  Map<String, DateTime> requestTimeMap = {};
   String ip;
 
   Client(this.ip);
@@ -9,16 +11,36 @@ class Client{
   
   void sendSpeed(int value) async 
   {
+    String request = 'set-speed';
+    if (!isRequestAllowed(request)) return;
+
     print("sendColor $value");
-    var response = await fetchRequest("set-speed?speed=$value");
+      var response = await fetchRequest("$request?speed=$value");
     print(response.statusCode);
   }
 
   void sendBrightness(int value) async 
   {
+    String request = 'set-brightness';
+    if (!isRequestAllowed(request)) return;
+
     print("sendBrightness $value");
-    var response = await fetchRequest("set-brightness?brightness=$value");
+    var response = await fetchRequest("$request?brightness=$value");
     print(response.statusCode);
+  }
+
+  bool isRequestAllowed(String request)
+  {
+    DateTime? lastReuqestTime = requestTimeMap[request];
+    var now = DateTime.now();
+    if (lastReuqestTime != null
+        && now.difference(lastReuqestTime).inMilliseconds < 100)
+    {
+      return false;
+    }
+
+    requestTimeMap[request] = now;
+    return true;
   }
 
   Future<int> fetchColor() async
@@ -28,7 +50,9 @@ class Client{
 
     if (response.statusCode == 200)
     {
-      return int.parse(response.body);
+      int color = int.parse(response.body); 
+      print("fetchColor response: ${color}");
+      return color;
     }
 
     return 0;
@@ -36,8 +60,11 @@ class Client{
 
   void sendColor(int hue) async
   {
+    String request = 'set-color';
+    if (!isRequestAllowed(request)) return;
+
     print("sendColor $hue");
-    var response = await fetchRequest("set-color?hue=$hue");
+    var response = await fetchRequest("$request?hue=$hue");
     print(response.statusCode);
   }
 
