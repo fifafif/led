@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 0, 190, 6)),
+        colorScheme: ColorScheme.fromSeed(seedColor: Color.fromARGB(255, 0, 255, 8)),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'LED'),
@@ -58,45 +58,47 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
 
-  int _counter = 0;
   double _hueValue = 0;
   double _brightnessValue = 255;
   double _speedValue = 127;
-  int _hueColor = 0;
 
   Client client = Client("192.168.4.1");  
 
+  Color rgbFromWheel(int WheelPos)
+  {
+    int redValue, greenValue, blueValue;
 
-    Color rgbFromWheel(int WheelPos)
+    WheelPos = 255 - WheelPos;
+    if (WheelPos < 85)
     {
-        int redValue, greenValue, blueValue;
-
-        WheelPos = 255 - WheelPos;
-        if (WheelPos < 85)
-        {
-            redValue = 255 - WheelPos * 3;
-            greenValue = 0;
-            blueValue = WheelPos * 3;
-        }
-        else if (WheelPos < 170)
-        {
-            WheelPos -= 85;
-            redValue = 0;
-            greenValue = WheelPos * 3;
-            blueValue = 255 - WheelPos * 3;
-        }
-        else
-        {
-            WheelPos -= 170;
-            redValue = WheelPos * 3;
-            greenValue = 255 - WheelPos;
-            blueValue = 0;
-        }
-
-        return new Color(0xFF << 24 | redValue << 16 | greenValue << 8 | blueValue);
+        redValue = 255 - WheelPos * 3;
+        greenValue = 0;
+        blueValue = WheelPos * 3;
+    }
+    else if (WheelPos < 170)
+    {
+        WheelPos -= 85;
+        redValue = 0;
+        greenValue = WheelPos * 3;
+        blueValue = 255 - WheelPos * 3;
+    }
+    else
+    {
+        WheelPos -= 170;
+        redValue = WheelPos * 3;
+        greenValue = 255 - WheelPos;
+        blueValue = 0;
     }
 
+    return new Color(0xFF << 24 | redValue << 16 | greenValue << 8 | blueValue);
+  }
 
+  void setColor(int value) {
+    setState(() {
+      _hueValue = value.toDouble();
+      client.sendColor(value);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +131,73 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            Spacer(), 
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Aligns buttons within the row
+              children: <Widget>[
+                ElevatedButton(
+                  child: null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFFF0000),
+                  ),
+                  onPressed: () {
+                    setColor(255);
+                  }
+                ),
+                ElevatedButton(
+                  child: null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF00FF00),
+                  ),
+                  onPressed: () {
+                    setColor(85);
+                  }
+                ),
+                ElevatedButton(
+                  child: null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF0000FF),
+                  ),
+                  onPressed: () {
+                    setColor(170);
+                  }
+                ),
+                ],  
+            ),
+            Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Aligns buttons within the row
+              children: <Widget>[
+                ElevatedButton(
+                  child: null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFFFFF00),
+                  ),
+                  onPressed: () {
+                    setColor(0);
+                  }
+                ),
+                ElevatedButton(
+                  child: null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF00FFFF),
+                  ),
+                  onPressed: () {
+                    setColor(127);
+                  }
+                ),
+                ElevatedButton(
+                  child: null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFFF00FF),
+                  ),
+                  onPressed: () {
+                    setColor(216);
+                  }
+                ),
+                ],  
+            ),
+            Spacer(), 
             const Image(
               image: AssetImage('assets/t_hue_colors.png'),
               width: double.infinity,
@@ -185,14 +254,20 @@ class _MyHomePageState extends State<MyHomePage> {
                 });
               },
             ),
+            Spacer(),
+            ElevatedButton(
+              child: const Text('BEAT'),
+              onPressed: () {
+                client.sendBeat();
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(150, 80), //////// HERE
+              ),
+            ),
+            Spacer(),
           ],
         ),
-      ),
-      /*floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.*/
+      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }

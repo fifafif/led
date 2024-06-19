@@ -89,4 +89,10 @@ class Client {
   {
     return "http://$ip/$request";
   }
+
+  void sendBeat() async {
+    print("beat");
+    var response = await fetchRequest("beat");
+    print(response.statusCode);
+  }
 }
