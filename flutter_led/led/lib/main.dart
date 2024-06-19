@@ -198,10 +198,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],  
             ),
             Spacer(), 
-            const Image(
-              image: AssetImage('assets/t_hue_colors.png'),
-              width: double.infinity,
-              fit: BoxFit.cover,
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 0,
+              ),
+              child: const Image(
+                image: AssetImage('assets/t_hue_colors.png'),
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
             Slider(
               min: 0,
