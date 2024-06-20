@@ -41,7 +41,9 @@ float bounceEaseInOut(float t);
 
 float clamp01(float t);
 float lerp(int a, int b, float t);
-//float lerp(float a, float b, float t);
+// float lerpFloat(int a, int b, float t);
+float lerpFloat(float a, float b, float t);
+float lerp(float a, float b, float t);
 float inverseLerp(int a, int b, float t);
 
 #endif

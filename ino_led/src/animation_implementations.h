@@ -8,6 +8,114 @@
 #include "colors.h"
 #include "playback.h"
 
+class RandomSparksOverdriveAnimatinos : public Animation
+{
+  public:
+    RandomSparksOverdriveAnimatinos(Playback *playback, StripHandler *strip) : Animation(playback, strip)
+    {
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(1.5f)) return;
+      
+      float t = easeIn(playback->normalizedStepTime);
+      const byte speed = 4;
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        byte value = strip->stripValues[i];
+        value -= speed;
+        strip->stripValues[i] = value;
+      
+        float brightness = (1 - t) * value / 255;
+        byte c = i;
+        strip->setPixelColor(i, wheel(c, brightness));
+      }
+    }
+
+    void onSequenceStart()
+    {
+      strip->generateRandomStripValues();
+    }
+};
+
+class FireworksOverdriveAnimation : public Animation
+{  
+  public:
+    const byte stepCount = 3;
+
+    FireworksOverdriveAnimation(Playback *playback, StripHandler *strip) : Animation(playback, strip)
+    {
+    }
+
+    void update()
+    {
+      switch (playback->sequenceStep)
+      {
+        case 0: fireworksStep1(); break;
+        case 1: fireworksStep2(); break;
+        case 2: fireworksStep3(); break;
+      }
+    }
+
+    void fireworksStep1()
+    {
+      if (playback->updateStepTime(1.0f, stepCount)) return;
+      
+      playback->ledIndex = sineEaseIn(playback->normalizedStepTime) * playback->pixelCount;
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        float c = inverseLerp(playback->ledIndex - 60, playback->ledIndex, i); 
+        if (i > playback->ledIndex)
+        {
+          c = 0;
+        }
+        strip->setPixelColor(i, clamp01(c));
+      }
+    }
+
+    void fireworksStep2()
+    {
+      if (playback->updateStepTime(0.15, stepCount)) return;
+      
+      playback->ledIndex = playback->pixelCount - easeOut(playback->normalizedStepTime) * playback->pixelCount;
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        float c = inverseLerp(playback->ledIndex - 30, playback->ledIndex, i); 
+        strip->setPixelColor(i, c);
+      }
+    }
+
+    void fireworksStep3()
+    {
+      if (playback->updateStepTime(2, stepCount)) return;
+
+      float exploTime = playback->normalizedStepTime * 4;
+      float exploFactor = easeOut(1 - clamp01(exploTime));
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        byte value = strip->stripValues[i];
+        value -= 10;
+        strip->stripValues[i] = value;
+      
+        float c = 1.0 * value / 255;
+        c *= easeIn(1 - playback->normalizedStepTime);
+        c = lerpFloat(c, 1.0, exploFactor);
+
+        strip->setPixelColor(i, c);
+      }
+    }
+
+    void onSequenceStart()
+    {
+      strip->generateRandomStripValues();
+    }
+};
+
 class ChargeOverdriveAnimation : public Animation
 {
   public:

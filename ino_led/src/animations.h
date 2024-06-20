@@ -12,7 +12,7 @@ class Animations
 {
   public:
     const int ANIMATION_COUNT = 14;
-    const int OVERDRIVE_ANIMATION_COUNT = 2;
+    const int OVERDRIVE_ANIMATION_COUNT = 3;
     
   #if defined(PROD)
     const byte switchAutoModeEveryTickCount = 8;
@@ -67,12 +67,18 @@ class Animations
 
       overdriveAnimations = new Animation*[OVERDRIVE_ANIMATION_COUNT];
       overdriveAnimations[0] = new ChargeOverdriveAnimation(playback, stripHandler, 20); 
-      overdriveAnimations[1] = new FireboltAnimation(playback, stripHandler, 60);
+      overdriveAnimations[1] = new FireworksOverdriveAnimation(playback, stripHandler);
+      overdriveAnimations[2] = new RandomSparksOverdriveAnimatinos(playback, stripHandler);
 
 #if !defined(PROD)
       // debugAnimationIndex = 0;
-      debugOverdriveAnimationIndex = 0;
+      debugOverdriveAnimationIndex = 2;
       isOverdrive = true;
+
+      if (isOverdrive)
+      {
+        choseRandomOverdrive();
+      }
 #endif
 
       choseRandomAnimation();
@@ -133,14 +139,6 @@ class Animations
     void updateOverrideAnimation()
     {
       updateAnimation(overdriveAnimations[currentOverdriveAnimationIndex], true);
-      
-      /*int s = randomMode;
-      switch(s)
-      {
-        case 0: fireworks(); break;
-        case 1: chargeSequence(5, 20); break;
-        case 2: randomSparksOverdrive(); break;
-      }*/
     }
 
     void startNewAnimation(int animationIndex)

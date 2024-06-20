@@ -193,6 +193,14 @@ float lerp(float a, float b, float t)
   return a + (b - a) * t;
 }
 
+float lerpFloat(float a, float b, float t)
+{
+  if (t >= 1) return b; 
+  if (t <= 0) return a;
+  
+  return a + (b - a) * t;
+}
+
 float inverseLerp(int a, int b, float t)
 {
   if (b == a) return 0;
