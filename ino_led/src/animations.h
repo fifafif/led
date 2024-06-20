@@ -12,7 +12,7 @@ class Animations
 {
   public:
     const int ANIMATION_COUNT = 14;
-    const int OVERDRIVE_ANIMATION_COUNT = 3;
+    const int OVERDRIVE_ANIMATION_COUNT = 5;
     
   #if defined(PROD)
     const byte switchAutoModeEveryTickCount = 8;
@@ -69,10 +69,12 @@ class Animations
       overdriveAnimations[0] = new ChargeOverdriveAnimation(playback, stripHandler, 20); 
       overdriveAnimations[1] = new FireworksOverdriveAnimation(playback, stripHandler);
       overdriveAnimations[2] = new RandomSparksOverdriveAnimatinos(playback, stripHandler);
+      overdriveAnimations[3] = new AlarmOverdriveAnimation(playback, stripHandler);
+      overdriveAnimations[4] = new PoliceOverdriveAnimation(playback, stripHandler);
 
 #if !defined(PROD)
       // debugAnimationIndex = 0;
-      debugOverdriveAnimationIndex = 2;
+      debugOverdriveAnimationIndex = 4;
       isOverdrive = true;
 
       if (isOverdrive)

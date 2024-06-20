@@ -65,6 +65,42 @@ class StripHandler {
       setPixelColor(i, value);
     }
 
+    void setValueByte(int i, byte value)
+    {
+      stripValues[i] = value;
+      setPixelColor(i, value / 255.0f);
+    }
+
+    void fadeValue(int i, byte fade)
+    {
+      byte value = stripValues[i];
+      if (value < fade)
+      {
+        value = 0;
+      }
+      else
+      {
+        value -= fade;
+      }
+
+      setValueByte(i, value);
+    }
+
+    void fadeValueOnly(int i, byte fade)
+    {
+      byte value = stripValues[i];
+      if (value < fade)
+      {
+        value = 0;
+      }
+      else
+      {
+        value -= fade;
+      }
+
+      stripValues[i] = value;
+    }
+
     void setPixelColor(int i, float c)
     {
       c *= brightness;

@@ -8,6 +8,180 @@
 #include "colors.h"
 #include "playback.h"
 
+class PoliceOverdriveAnimation : public Animation
+{
+  public:
+    bool isFlip = false;
+    int flipLength = 0;
+    float timeToFlip = 0;
+    byte flipCount = 0;
+    const float stepDuration = 4.0f;
+    const byte flipCountPerStep = 16;
+
+    PoliceOverdriveAnimation(Playback *playback, StripHandler *strip) : Animation(playback, strip)
+    {
+      flipLength = strip->pixelCount;
+    }
+
+    void update()
+    {
+      switch (playback->sequenceStep)
+      {
+        case 1: step2(); break;
+        default: step1(); break;
+      }
+    }
+
+    void step2()
+    {
+      if (playback->updateStepTime(0.5f)) return;
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        strip->fadeValueOnly(i, 15);
+        float c = strip->brightness * strip->stripValues[i] * 0.6f;
+        strip->setPixelColor(i, getColor(0, 0, c));
+      }
+    }
+
+    void step1()
+    {
+      if (playback->updateStepTime(stepDuration, 2)) return;
+
+      if (flipLength < 1)
+      {
+        flipLength = 1;
+      }
+
+      timeToFlip -= playback->deltaTime;
+      if (timeToFlip <= 0)
+      {
+        flipCount++;
+        setNextFlipTime(0.2f + 0.8f - 0.8f * flipCount / flipCountPerStep);
+        isFlip = flipCount % 2 == 0;
+        
+        for (int i = 0; i < playback->pixelCount; i++)
+        {
+          if (i % flipLength == 0)
+          {
+            isFlip = !isFlip;
+          }
+
+          if (isFlip)
+          {
+            strip->stripValues[i] = 255;
+          }
+        }
+      }
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        if (i % flipLength == 0)
+        {
+          isFlip = !isFlip;
+        }
+
+        strip->fadeValueOnly(i, 30);
+
+        if (isFlip)
+        {
+          strip->setPixelColor(i, getColor(strip->brightness * strip->stripValues[i], 0, 0));
+        }
+        else
+        {
+          strip->setPixelColor(i, getColor(0, 0, strip->brightness * strip->stripValues[i]));
+        }
+      }
+    }
+
+    void onSequenceStart()
+    {
+      flipCount = 0;
+      flipLength = strip->pixelCount / 2;
+      strip->clearRandomStripValues();
+    }
+
+    void onStepStart()
+    {
+      flipCount = 0;
+      flipLength = flipLength / 2;
+      setNextFlipTime(1.0f);
+    }
+
+    void setNextFlipTime(float factor)
+    {
+      timeToFlip = factor * stepDuration / flipCountPerStep;
+    }
+};
+
+class AlarmOverdriveAnimation : public Animation
+{
+  public:
+    bool isFlip = false;
+    int flipLength = 0;
+    float timeToFlip = 0;
+    byte flipCount = 0;
+    const float stepDuration = 2.0f;
+    const byte flipCountPerStep = 8;
+
+    AlarmOverdriveAnimation(Playback *playback, StripHandler *strip) : Animation(playback, strip)
+    {
+      flipLength = strip->pixelCount;
+    }
+
+    void update()
+    {
+      if (playback->updateStepTime(stepDuration, 2)) return;
+
+      if (flipLength < 1)
+      {
+        flipLength = 1;
+      }
+
+      timeToFlip -= playback->deltaTime;
+      if (timeToFlip <= 0)
+      {
+        flipCount++;
+        setNextFlipTime();
+        isFlip = flipCount % 2 == 0;
+   
+        for (int i = 0; i < playback->pixelCount; i++)
+        {
+          if (i % flipLength == 0)
+          {
+            isFlip = !isFlip;
+          }
+
+          if (isFlip)
+          {
+            strip->setValue(i, 1.0f);
+          }
+        }
+      }
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        strip->fadeValue(i, 20);
+      }
+    }
+
+    void onSequenceStart()
+    {
+      flipLength = strip->pixelCount / 2;
+    }
+
+    void onStepStart()
+    {
+      flipLength = flipLength / 2;
+      setNextFlipTime();
+    }
+
+    void setNextFlipTime()
+    {
+      timeToFlip = stepDuration / flipCountPerStep;
+    }
+};
+
 class RandomSparksOverdriveAnimatinos : public Animation
 {
   public:
@@ -18,7 +192,7 @@ class RandomSparksOverdriveAnimatinos : public Animation
     void update()
     {
       if (playback->updateStepTime(1.5f)) return;
-      
+
       float t = easeIn(playback->normalizedStepTime);
       const byte speed = 4;
 
@@ -53,9 +227,9 @@ class FireworksOverdriveAnimation : public Animation
     {
       switch (playback->sequenceStep)
       {
-        case 0: fireworksStep1(); break;
         case 1: fireworksStep2(); break;
         case 2: fireworksStep3(); break;
+        default: fireworksStep1(); break;
       }
     }
 
