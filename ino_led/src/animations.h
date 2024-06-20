@@ -14,7 +14,12 @@ class Animations
     const int ANIMATION_COUNT = 14;
     const int OVERDRIVE_ANIMATION_COUNT = 2;
     
+  #if defined(PROD)
+    const byte switchAutoModeEveryTickCount = 8;
+  #else
     const byte switchAutoModeEveryTickCount = 2;
+  #endif
+  
     const byte slaveColorModeCount = 4;
 
     Playback *playback;
@@ -28,6 +33,7 @@ class Animations
     int currentAnimationIndex = 0;
     int currentOverdriveAnimationIndex = 0;
     int debugAnimationIndex = -1;
+    int debugOverdriveAnimationIndex = -1;
 
     // Color
     // DMX = 0, Rnd = 1, Wheel = 2, WheelStep = 3, Serial = 4
@@ -60,10 +66,15 @@ class Animations
       animations[13] = new MovingFirebolsAnimation(playback, stripHandler, 10);
 
       overdriveAnimations = new Animation*[OVERDRIVE_ANIMATION_COUNT];
-      overdriveAnimations[0] = new CylonAnimation(playback, stripHandler, 100); 
+      overdriveAnimations[0] = new ChargeOverdriveAnimation(playback, stripHandler, 20); 
       overdriveAnimations[1] = new FireboltAnimation(playback, stripHandler, 60);
 
-      // debugAnimationIndex = 13;
+#if !defined(PROD)
+      // debugAnimationIndex = 0;
+      debugOverdriveAnimationIndex = 0;
+      isOverdrive = true;
+#endif
+
       choseRandomAnimation();
     }
 
@@ -79,29 +90,49 @@ class Animations
       }
     }
 
-    void updateAnimation()
+    void updateAnimation(Animation *animation, bool isOverdrive)
     {
       if (playback->isSequenceEnd)
       {
-        if (playback->animationPlayCount % switchAutoModeEveryTickCount == 0)
+        if (isOverdrive)
         {
-          choseRandomAnimation();
+        #if !defined(PROD)
+          if (debugOverdriveAnimationIndex < 0)
+        #endif
+          {
+            this->isOverdrive = false;
+            choseRandomAnimation();
+            animation = animations[currentAnimationIndex];
+          }
+        }
+        else
+        {
+          if (playback->animationPlayCount % switchAutoModeEveryTickCount == 0)
+          {
+            choseRandomAnimation();
+          }
         }
 
-        animations[currentAnimationIndex]->onSequenceStart();
-        animations[currentAnimationIndex]->onStepStart();
+        animation->onSequenceStart();
+        animation->onStepStart();
         changeColor();
       }
       else if (playback->isStepEnd)
       {
-        animations[currentAnimationIndex]->onStepStart();
+        animation->onStepStart();
       }
 
-      animations[currentAnimationIndex]->update();
+      animation->update();
+    }
+
+    void updateAnimation()
+    {
+      updateAnimation(animations[currentAnimationIndex], false);
     }
 
     void updateOverrideAnimation()
     {
+      updateAnimation(overdriveAnimations[currentOverdriveAnimationIndex], true);
       
       /*int s = randomMode;
       switch(s)
@@ -118,15 +149,29 @@ class Animations
       setNewAnimation(animationIndex);
     }
 
-    void setNewAnimation(int animationIndex)
+    void setNewAnimation(int index)
     {
-      currentAnimationIndex = animationIndex;
-      animations[currentAnimationIndex]->onStart();
+      currentAnimationIndex = index;
+      animations[index]->onStart();
+    }
+
+    void setNewAnimationOveredrive(int index)
+    {
+      currentOverdriveAnimationIndex = index;
+      overdriveAnimations[index]->onStart();
     }
 
     void choseRandomOverdrive()
     {
-      currentOverdriveAnimationIndex = random(OVERDRIVE_ANIMATION_COUNT);
+      if (OVERDRIVE_ANIMATION_COUNT < 1) return;
+      
+      if (debugOverdriveAnimationIndex > -1)
+      {
+        setNewAnimationOveredrive(debugOverdriveAnimationIndex);
+        return;
+      }
+
+      setNewAnimationOveredrive(random(OVERDRIVE_ANIMATION_COUNT));
     }
 
     void choseRandomAnimation()
@@ -155,8 +200,6 @@ class Animations
     void startOverdrive()
     {
       log("start overdrive!");
-
-      //animations[currentAnimationIndex]->sequenceEnd();
       playback->startStepTime();
       isOverdrive = true;
 

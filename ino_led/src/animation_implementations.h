@@ -8,6 +8,121 @@
 #include "colors.h"
 #include "playback.h"
 
+class ChargeOverdriveAnimation : public Animation
+{
+  public:
+    int length;
+    const byte seqCount = 5;
+
+    ChargeOverdriveAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    {
+      this->length = length;
+    }
+
+    void update()
+    {
+      if (playback->sequenceStep < seqCount - 1) {
+        chargeStep1(length);
+      } else if (playback->sequenceStep < seqCount) {
+        chargeStep2(length); 
+      } else {
+        chargeStep3();
+      }
+    }
+
+    void chargeStep3()
+    {
+      if (playback->updateStepTime(0.5f, true)) return;
+      
+      playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+      
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        float c = i > playback->ledIndex ? 1 : 0;
+        strip->setPixelColor(i, c);
+      }
+    }
+
+    void chargeStep2(int fillSize)
+    {
+      if (playback->updateStepTime(0.3f, seqCount)) return;
+      
+      int fillIndex = playback->sequenceStep * fillSize;
+      playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+      playback->ledIndex = map(playback->ledIndex, 0, playback->pixelCount, fillIndex, playback->pixelCount);
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        float c = 1;
+        if (i < fillIndex)
+        {
+          c = 1;
+        }
+        else
+        {
+          if (i > playback->ledIndex)
+          {
+            c = 0;
+          }
+        }
+        strip->setPixelColor(i, clamp01(c));
+      }
+    }
+
+    void chargeStep1(int fillSize)
+    {
+      int fillIndex = playback->sequenceStep * fillSize;
+      float duration = 1.0f * (1 - 1.0f * fillIndex / playback->pixelCount);
+      if (duration < 0.1f)
+      {
+        duration = 0.1f;
+      }
+
+      if (playback->updateStepTime(duration, seqCount)) return;
+      
+      playback->ledIndex = sineEaseIn(playback->normalizedStepTime) * playback->pixelCount;
+      playback->ledIndex = playback->pixelCount - playback->ledIndex;
+      playback->ledIndex = map(playback->ledIndex, 0, playback->pixelCount, fillIndex, playback->pixelCount);
+
+      if (playback->sequenceStep > 0)
+      {
+        float bounceTime = playback->normalizedStepTime * 1.5f;
+        float bounceIndex = 0;
+        if (bounceTime < 1)
+        {
+          bounceIndex = sin(PI * easeOut(bounceTime)) * fillSize * 1.5f;
+          if (bounceTime > 0.5f && bounceIndex < fillSize)
+          {
+            bounceIndex = fillSize;
+          } 
+        }
+        else
+        {
+          bounceIndex = fillSize;
+        }
+
+        fillIndex = fillSize * (playback->sequenceStep - 1) + bounceIndex;
+      }
+
+      for (int i = 0; i < playback->pixelCount; i++)
+      {
+        float c = 1;
+        if (i < fillIndex)
+        {
+          c = 1;
+        }
+        else
+        {
+          c = 1 - inverseLerp(playback->ledIndex, playback->ledIndex + fillSize, i); 
+          if (i < playback->ledIndex)
+          {
+            c = 0;
+          }
+        }
+        strip->setPixelColor(i, clamp01(c));
+      }
+    }
+};
 
 class MovingFirebolsAnimation : public Animation
 {

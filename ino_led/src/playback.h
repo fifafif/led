@@ -23,7 +23,6 @@ class Playback
     int sequenceStep;
     unsigned long stepStartMs;
     float lastUpdateTime;
-    bool isTickEnd;
     bool isSequenceEnd;
     bool isStepEnd;
     bool isSlave;
@@ -73,7 +72,6 @@ class Playback
       normalizedStepTime = elapsedMs / (stepDuration * 1000);
       normalizedStepTime *= speedFactor;
       ledIndex = (int)(normalizedStepTime * pixelCount) % pixelCount;
-      isTickEnd = false;
       isStepEnd = false;
       isSequenceEnd = false;
       stepTicks += 1;
@@ -124,22 +122,10 @@ class Playback
         //slaveColorMode = random(slaveColorModeCount);
       }
       
-      //changeColor();
       ledIndex = 0;
-      isTickEnd = true;
       isSequenceEnd = true;
       sequenceStep = 0;
       animationPlayCount += 1;
-
-      /*
-      if (isOverdrive)
-      {
-        log("overdrive end");
-        isOverdrive = false;
-        choseRandomSequence();
-        return;
-      }*/
-
 
       if (!isSlave)
       {
