@@ -8,6 +8,8 @@ char* brightnessToAscii(byte brightness)
   const int stepCount = 5;
   // byte value = (byte)round(1.0 * brightness * (stepCount - 1) / 255);
   byte value = brightness * (stepCount - 1) / 255;
+  // Serial.print(brightness);
+  // Serial.print(",");
   switch (value)
   {
     case 0: return "_";
@@ -70,7 +72,7 @@ void logColor(byte r, byte b, byte g)
 
 void logStrip(uint32_t *strip, int length)
 {
-#if defined(LED_SIM_ONLY) && defined(LED_SIM_PRINT)  
+// #if defined(LED_SIM_ONLY) && defined(LED_SIM_PRINT)  
 
   int width = 100;
   float step = 1.0 * length / width;
@@ -105,7 +107,7 @@ void logStrip(uint32_t *strip, int length)
 
   Serial.println("]");
 
-#endif
+// #endif
 }
 
 void log(char *message)
@@ -113,6 +115,14 @@ void log(char *message)
 #if !defined(DMX_ON) && !defined(LED_SIM_PRINT)
   Serial.println(message);
 #endif
+}
+
+void log(char *message, float number)
+{
+// #if !defined(DMX_ON) && !defined(LED_SIM_PRINT)
+  Serial.print(message);
+  Serial.println(number);
+// #endif
 }
 
 void log(String &message)

@@ -1,18 +1,19 @@
 //#define DMX_ON
 // #define IS_WIFI_ENABLED
 
-// #define PROD
+#define PROD
 
 // LED Debug
-#define LED_SIM_ONLY
+// #define LED_SIM_ONLY
 #define LED_SIM_DEBUG
 #define LED_SIM_PRINT
-#define LED_SIM_PRINT_BYTES
+// #define LED_SIM_PRINT_BYTES
 #define LED_SIM_PRINT_BYTES_BRIGHTNESS
-#define BEAT_SIMULATOR
+// #define BEAT_SIMULATOR
 
 #if defined(PROD)
 #undef LED_SIM_ONLY
+#undef BEAT_SIMULATOR
 #endif
 
 #if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA) || defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_UNO)
@@ -49,6 +50,7 @@
 #include "strip_handler.h"
 #include "animations.h"
 #include "beat_simulator.h"
+#include "overdrive_handler.h"
 
 #if defined(IS_WIFI_ENABLED)
 #include "wifi_web_server.h"
@@ -83,7 +85,7 @@ LiteLED strip(LED_STRIP_WS2812, 0);
 // ============================================= CONFIG ==========================================
 
 const bool IS_SLAVE = false;
-const bool IS_OVERDRIVE_REACTIVE = false;
+const bool IS_OVERDRIVE_REACTIVE = true;
 const bool IS_BEAT_REACTIVE = false;
 
 // DMX Values
@@ -109,6 +111,7 @@ byte stripValues[NUMPIXELS] = {};
 StripHandler stripHandler;
 Playback playback(NUMPIXELS);
 Animations animations(&playback, &stripHandler);
+OverdriveHandler overdriveHandler(&animations);
 
 #if defined(BEAT_SIMULATOR)
 BeatSimulator beatSimulator(&animations, 145);
@@ -129,7 +132,7 @@ void readSerial();
 void readBeat();
 void beat();
 void readOverrideButton();
-void startOverdrive();
+// void startOverdrive();
 void startOverdrive(byte index);
 void writeSerialColor();
 void readDMX();
@@ -139,6 +142,11 @@ void showStrip();
 
 void setup () 
 {
+  pinMode(LED_ONBOARD, OUTPUT);
+  // pinMode(BUTTON_IN, INPUT);
+  pinMode(BEAT_IN, INPUT);
+  randomSeed(analogRead(0) + analogRead(1));
+  
   stripHandler.pixelCount = NUMPIXELS;
 
 #if defined(LED_SIM_ONLY)
@@ -150,11 +158,8 @@ void setup ()
   stripHandler.brightness = brightness;
   stripHandler.stripValues = stripValues;
 
-  pinMode(LED_ONBOARD, OUTPUT);
-  pinMode(BUTTON_IN, INPUT);
-  pinMode(BEAT_IN, INPUT);
-  
-  randomSeed(analogRead(0) + analogRead(1));
+  overdriveHandler.setup();
+
 
 #if defined(DMX_ON)
   DMXSerial.init(DMXProbe);
@@ -176,20 +181,24 @@ void setup ()
 #endif
 
 #if defined(IS_WIFI_ENABLED)
-  // wifiServer.connect();
   setupWifi(&stripHandler, &playback);
 #endif
 
   setupSerial(IS_SLAVE);
   animations.setAsSlave(IS_SLAVE);
+
+  overdriveHandler.isSlave = IS_SLAVE;
+  overdriveHandler.isOverdriveReactive = IS_OVERDRIVE_REACTIVE;
 }
 
 void loop() 
 {
   readDMX();
   readBeat();
-  readOverrideButton();
+  // readOverrideButton();
   readSerial();
+
+  overdriveHandler.update();
 
 #if defined(BEAT_SIMULATOR)
   beatSimulator.update();
@@ -202,7 +211,10 @@ void loop()
 #endif
 
   showStrip();
+  delay(1);
 }
+
+uint32_t *pix = new uint32_t[NUMPIXELS];
 
 void showStrip()
 {
@@ -217,6 +229,15 @@ void showStrip()
     #endif
   #endif
 #else
+
+  // for (int i = 0; i < NUMPIXELS; i++)
+  // {
+  //   pix[i] = strip.getPixelC(i);
+  // } 
+
+  // logStrip(pix, NUMPIXELS);
+  
+
   strip.show();
 #endif
 }
@@ -273,26 +294,11 @@ void beat()
   ticksSinceLastBeat = 0;
 }
 
-void readOverrideButton()
-{
-  if (!IS_OVERDRIVE_REACTIVE
-      || IS_SLAVE) return;
-
-  int buttonState = digitalRead(BUTTON_IN);
-  if (buttonState == HIGH
-      && buttonState != lastOverdriveButtonState)
-  {
-    startOverdrive();  
-  }
-
-  lastOverdriveButtonState = buttonState;
-}
-
 void startOverdrive()
 {
   log("start overdrive!");
 
-  animations.startOverdrive();
+  //animations.startOverdriveRandom(0);
 
   if (!IS_SLAVE)
   {

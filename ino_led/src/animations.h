@@ -11,8 +11,9 @@
 class Animations
 {
   public:
-    const int ANIMATION_COUNT = 14;
+    const int ANIMATION_COUNT = 13;
     const int OVERDRIVE_ANIMATION_COUNT = 5;
+    const int OVERDRIVE_INDEX_1_LENGTH = 5;
     
   #if defined(PROD)
     const byte switchAutoModeEveryTickCount = 8;
@@ -27,6 +28,7 @@ class Animations
     Animation *animation;
     Animation **animations;
     Animation **overdriveAnimations;
+    int **overdriveIndices;
     bool isOverdrive;
     bool isSlave;
 
@@ -61,9 +63,9 @@ class Animations
       animations[9] = new SineWaveAnimation(playback, stripHandler, 2);
       // animations[10] = new SegmentFillAnimation(playback, stripHandler, 6);
       animations[10] = new StarsAnimation(playback, stripHandler, 6);
-      animations[11] = new StarsAnimation(playback, stripHandler, 6);
-      animations[12] = new MovingStarsAnimation(playback, stripHandler, 10);
-      animations[13] = new MovingFirebolsAnimation(playback, stripHandler, 10);
+      //animations[11] = new StarsAnimation(playback, stripHandler, 6);
+      animations[11] = new MovingStarsAnimation(playback, stripHandler, 10);
+      animations[12] = new MovingFirebolsAnimation(playback, stripHandler, 10);
 
       overdriveAnimations = new Animation*[OVERDRIVE_ANIMATION_COUNT];
       overdriveAnimations[0] = new ChargeOverdriveAnimation(playback, stripHandler, 20); 
@@ -72,8 +74,23 @@ class Animations
       overdriveAnimations[3] = new AlarmOverdriveAnimation(playback, stripHandler);
       overdriveAnimations[4] = new PoliceOverdriveAnimation(playback, stripHandler);
 
+      // int jagged[][3] = { {0,1}, {1,2,3} };
+      
+      // overdriveIndices = new int*[3];
+      // overdriveIndices[0] = new int[2];
+      // overdriveIndices[0][0] = 0;
+      // overdriveIndices[0][1] = 1;
+
+      // overdriveIndices[1] = new int[2];
+      // overdriveIndices[1][0] = 2;
+      // overdriveIndices[1][1] = 3;
+
+      // overdriveIndices[2] = new int[1];
+      // overdriveIndices[2][0] = 4;
+
+
 #if !defined(PROD)
-      // debugAnimationIndex = 0;
+      // debugAnimationIndex = 10;
       debugOverdriveAnimationIndex = 4;
       isOverdrive = true;
 
@@ -151,6 +168,9 @@ class Animations
 
     void setNewAnimation(int index)
     {
+      Serial.print("New animation: ");
+      Serial.println(index);
+      
       currentAnimationIndex = index;
       animations[index]->onStart();
     }
@@ -158,7 +178,45 @@ class Animations
     void setNewAnimationOveredrive(int index)
     {
       currentOverdriveAnimationIndex = index;
+      playback->startStepTime();
       overdriveAnimations[index]->onStart();
+    }
+
+    int choseRandomOverdriveIndex(byte index)
+    {
+      switch(index)
+      {
+        case 0: {
+          byte i = random(0, 2);
+          switch (i) {
+            case 0: return 0;
+            case 1: return 1;
+          }
+          break;
+        }
+        case 1: {
+          byte i = random(0, 2);
+          switch (i) {
+            case 0: return 2;
+            case 1: return 3;
+          }
+          break;
+        }
+        case 2: return 4;
+      }
+      // TODO: Implement!
+      return 0;
+      // byte length = sizeof(overdriveIndices[index]) / sizeof(int);
+      // long i = random(0, length);
+      // return overdriveIndices[index][i];
+    }
+
+    void choseRandomOverdrive(byte index)
+    {
+      if (OVERDRIVE_ANIMATION_COUNT < 1) return;
+      
+      int i = choseRandomOverdriveIndex(index);
+      setNewAnimationOveredrive(i);
     }
 
     void choseRandomOverdrive()
@@ -187,7 +245,7 @@ class Animations
       int newIndex = currentAnimationIndex;
       while (newIndex == currentAnimationIndex)
       {
-        newIndex = random(ANIMATION_COUNT);
+        newIndex = random(11);
       }
 
       String msg = "new sequence: ";
@@ -197,18 +255,31 @@ class Animations
       setNewAnimation(newIndex);
     }
         
-    void startOverdrive()
+    void startOverdrive(byte index)
     {
       log("start overdrive!");
-      playback->startStepTime();
+      // playback->startStepTime();
       isOverdrive = true;
 
       if (!isSlave)
       {
-        choseRandomOverdrive();
+
+        choseRandomOverdrive(index);
       }  
     }
 
+    void startOverdriveRandom(byte index)
+    {
+      Serial.print("start overdrive random: ");
+      Serial.println(index);
+      // playback->startStepTime();
+      isOverdrive = true;
+
+      if (!isSlave)
+      {
+        choseRandomOverdrive(index);
+      }  
+    }
     void changeColor()
     {
       updateColorSeqEnd(colorMode);

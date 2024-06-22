@@ -46,15 +46,18 @@ class StripHandler {
 
     void addValue(int i, float value)
     {
-      byte valueByte = byte(value * 255);
-      word sum = word(value * 255) + stripValues[i];
+      int sum = (int)(value * 255.0f) + stripValues[i];
       if (sum > 255)
       {
         sum = 255;
       }
+      else if (sum < 0)
+      {
+        sum = 0;
+      }
 
-      stripValues[i] = sum;
-      setPixelColor(i, sum / 255.0f);
+      stripValues[i] = (byte)sum;
+      setPixelColor(i, clamp01(sum / 255.0f));
     }
 
     void setValue(int i, float value)
@@ -103,6 +106,7 @@ class StripHandler {
 
     void setPixelColor(int i, float c)
     {
+      c = clamp01(c);
       c *= brightness;
       setPixelColor(i, getColor(c * redValue, c * greenValue, c * blueValue));
     }
@@ -112,6 +116,8 @@ class StripHandler {
     #if defined(LED_SIM_ONLY)
       strip[i] = color;
     #else
+
+      color = color & 0x00FFFFFF;
 
     #if defined(LED_NEOPIXEL)
       strip->setPixelColor(i, color);

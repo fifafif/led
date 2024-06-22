@@ -57,7 +57,7 @@ class PoliceOverdriveAnimation : public Animation
       if (timeToFlip <= 0)
       {
         flipCount++;
-        setNextFlipTime(0.2f + 0.8f - 0.8f * flipCount / flipCountPerStep);
+        setNextFlipTime(0.4f + 0.6f - 0.6f * clamp01(1.0f * flipCount / flipCountPerStep));
         isFlip = flipCount % 2 == 0;
         
         for (int i = 0; i < playback->pixelCount; i++)
@@ -81,7 +81,7 @@ class PoliceOverdriveAnimation : public Animation
           isFlip = !isFlip;
         }
 
-        strip->fadeValueOnly(i, 30);
+        strip->fadeValueOnly(i, 10);
 
         if (isFlip)
         {
@@ -94,17 +94,22 @@ class PoliceOverdriveAnimation : public Animation
       }
     }
 
+    void onStart()
+    {
+      flipCount = 0;
+      flipLength = strip->pixelCount / 4;
+    }
+
     void onSequenceStart()
     {
       flipCount = 0;
-      flipLength = strip->pixelCount / 2;
       strip->clearRandomStripValues();
     }
 
     void onStepStart()
     {
       flipCount = 0;
-      flipLength = flipLength / 2;
+      flipLength = strip->pixelCount / 4;
       setNextFlipTime(1.0f);
     }
 
@@ -441,24 +446,26 @@ class MovingFirebolsAnimation : public Animation
 
       strip->clearColor();
       strip->clearRandomStripValues();
-
+  
       float f = sin(playback->normalizedStepTime * 70);
       f += sin(playback->normalizedStepTime * 40);
       f = f * 0.25 + 0.5;
       f = f * 0.2 + 0.4;
       // Serial.println(f);
 
-      for (int i = 0; i < strip->pixelCount; i++)
-      {
-        f += random(-0.1, 0.1); 
-        strip->setValue(i, f);
-      }
+      // for (int i = 0; i < strip->pixelCount; i++)
+      // {
+      //   f += random(-0.1, 0.1); 
+      //   strip->setValue(i, f);
+      // }
+
+      // Serial.println(playback->deltaTime);
 
       float time = playback->deltaTime * (easeOut(playback->normalizedStepTime) * 0.7f + 0.3f);
       for (int i = 0; i < STAR_COUNT; i++)
       {
         float position = starPositions[i];
-        position += (int)round(starSpeeds[i] * time);
+        position += starSpeeds[i] * time;
         if (position > playback->pixelCount + starWidths[i])
         {
           starSpeeds[i] = random(MIN_SPEED, MAX_SPEED);
@@ -467,8 +474,11 @@ class MovingFirebolsAnimation : public Animation
 
         starPositions[i] = position;
 
-        drawFirebolt((int)round(position), starWidths[i]);
+        drawStar((int)round(position), starWidths[i]);
+        // drawFirebolt((int)round(position), starWidths[i]);
       }
+
+      // strip->testSequence();
     }
 
     void drawStar(int index, int length)
@@ -496,7 +506,7 @@ class MovingFirebolsAnimation : public Animation
         {
           if (i < 0 || i > playback->pixelCount) continue;
 
-          strip->addValue(i, 1);
+          strip->addValue(i, 1.0f);
         }
 
         for (int i = start; i < index; i++)
@@ -787,7 +797,7 @@ class SegmentFillAnimation : public Animation
 
     void onBeat()
     {
-      playback->stepTimeEnd();
+      //playback->stepTimeEnd();
     }
 
     void onSequenceStart()
