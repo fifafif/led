@@ -1,4 +1,5 @@
 #include "arduinoFFT.h" // Standard Arduino FFT library 
+#include <driver/adc.h>
 
 #define AUDIO_IN_PIN 4
 #define BEAT_PIN 5
@@ -10,8 +11,8 @@ int led_pin = 2;//LED_BUILTIN;
 #define SCL_FREQUENCY 0x02
 #define SCL_PLOT 0x03
 
-const uint16_t samples = 512; //This value MUST ALWAYS be a power of 2
-const double samplingFrequency = 5000;
+const uint16_t samples = 1024; //This value MUST ALWAYS be a power of 2
+const double samplingFrequency = 25000;
 
 const uint16_t amplitude = 1000;
 const uint16_t noiseThreshold = 500;
@@ -25,8 +26,8 @@ const uint8_t bandCount = 7;
 byte peak[] = {0,0,0,0,0,0,0};
 int bandIndices[] = {3, 7, 17, 35, 80, 200, samples >> 2};
 
-double vReal[samples];
-double vImag[samples];
+float vReal[samples];
+float vImag[samples];
 unsigned long newTime, oldTime, lastBeatTimeMs;
 const int maxBPM = 250;
 unsigned int minBeatIntervalMs = 60 * 1000 / maxBPM; 
@@ -35,13 +36,18 @@ bool isInBeat;
 
 char printBuffer[10];
 
-ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal, vImag, samples, samplingFrequency);
+ArduinoFFT<float> FFT = ArduinoFFT<float>(vReal, vImag, samples, samplingFrequency);
 
 
 void setup() {
   Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BEAT_PIN, OUTPUT);
+
+  
+  adc1_config_width(ADC_WIDTH_BIT_12);
+  adc1_config_channel_atten(ADC1_CHANNEL_4, ADC_ATTEN_DB_11);
+
   sampling_period_us = round(1000000 * (1.0 / samplingFrequency));
 }
 
@@ -55,28 +61,40 @@ void loop() {
 
   long time = micros();
 
+for (uint16_t i = 0; i < samples; i++) {
+    // uncomment this to find sampling period
+    //long old_time = micros();
+    vReal[i] = adc1_get_raw(ADC1_CHANNEL_4);
+    vImag[i] = 0.0;
+    //unsigned long new_time = micros();
+    //Serial.println(new_time - old_time);
+  }
+/*
   for (int i = 0; i < samples; i++) {
-    newTime = micros()-oldTime;
-    oldTime = newTime;
-    unsigned long nextTime = newTime + sampling_period_us;
+    //newTime = micros()-oldTime;
+    //oldTime = newTime;
+    //unsigned long nextTime = newTime + sampling_period_us;*
     vReal[i] = analogRead(AUDIO_IN_PIN); // A conversion takes about 1uS on an ESP32
     vImag[i] = 0;
-    while (micros() < (nextTime)) { /* do nothing to wait */ }
-  }
-
-  /*Serial.print("Sample");
-  Serial.println(micros() - time);
+    //while (micros() < (nextTime)) { }
+  }*/
+/*
+  long time2 = micros();
+  Serial.print("Sample ");
+  Serial.println(time2 - time);
   time = micros();*/
 
   FFT.windowing(vReal, samples, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
   FFT.compute(vReal, vImag, samples, FFT_FORWARD);
   FFT.complexToMagnitude(vReal, vImag, samples);
-
+/*
+  time2 = micros(); 
   Serial.print("FFT ");
-  Serial.println(micros() - time);
-  time = micros();
+  Serial.println(time2 - time);
+  time = micros();*/
+
   int max = 0;
-  for (int i = 2; i < (samples/2); i++){ // Don't use sample 0 and only first SAMPLES/2 are usable. Each array eleement represents a frequency and its value the amplitude.
+  for (int i = 2; i < (samples/2); i++){
     if (vReal[i] > max)
     {
       max = vReal[i];
@@ -114,10 +132,6 @@ void loop() {
   {
     printBand(band, peak[band]);
   }
-
-  //if (millis()%4 == 0) {for (byte band = 0; band <= 6; band++) {if (peak[band] > 0) peak[band] -= 1;}} // Decay the peak
-
-
 
   /*Serial.print("Print");
   Serial.println(micros() - time);*/
