@@ -1,0 +1,549 @@
+
+  /*switch(s)
+  {
+    case 0: solid(); break;
+    case 1: pulse(40); break;
+    case 2: stroboFade(10); break;
+    case 3: grow(0.5f); break;
+    case 4: grow(2.0f); break;
+    case 5: pingPong(20); break; // fix
+    case 6: wavesSeq(); break;
+    case 7: wavesHalfSeq(); break; // fix
+    case 8: wavesSqrtSeq(); break;
+    case 9: wavesHardSeq(); break;
+    case 10: rainbow(60); break;  
+    case 11: rainbow(150); break;
+    case 12: dropsTime(30); break;
+    case 13: firebolt(100); break;
+    case 14: cylon(100); break;
+    case 15: centerWave(60); break;
+    case 16: randomSparks(60); break; 
+    case 17: sineWavesSequence(10.0f, 5.0f); break;
+    case 18: sineWavesSequence(5.0f, 2.0f); break;  
+  }*/
+  
+// ===============================================================================================
+// ============================================= SEQUENCES =======================================
+// ===============================================================================================
+
+float getIndexFactor(int i)
+{
+  return 1.0f * i / playback->pixelCount;
+}
+
+void sineWavesSequence(float duration, float width)
+{
+  if (playback->updateStepTime(duration, true)) return;
+  
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    float c = 0;
+    float indexFactor = getIndexFactor(i);
+    float sine1 = sin((playback->normalizedStepTime + indexFactor) * width * 1.0 * PI + tickCount);
+    float sine3 = sin((-playback->normalizedStepTime + indexFactor) * width * 1.7 * PI + tickCount);
+    float sine2 = sin((playback->normalizedStepTime + indexFactor) * width * 2.5 * PI + tickCount);
+    float sine4 = sin((-playback->normalizedStepTime + indexFactor) * width * 5.3 * PI + tickCount);
+
+    c += sine1 + sine2 + sine3 + sine4;
+    c = c > 0 ? 1 : 0;
+    strip->setPixelColor(i, c);
+  }
+}
+
+void chargeSequence(int seqCount, int length)
+{
+  if (sequenceStep < seqCount - 1) {
+    chargeStep1(length);
+  } else if (sequenceStep < seqCount) {
+    chargeStep2(length); 
+  } else {
+    chargeStep3();
+  }
+}
+
+void chargeStep3()
+{
+  if (playback->updateStepTime(0.5f, true)) return;
+  
+  playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+  
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    float c = i > playback->ledIndex ? 1 : 0;
+    strip->setPixelColor(i, c);
+  }
+}
+
+void chargeStep2(int fillSize)
+{
+  if (playback->updateStepTime(0.3f)) return;
+  
+  int fillIndex = sequenceStep * fillSize;
+  playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+  playback->ledIndex = map(playback->ledIndex, 0, playback->pixelCount, fillIndex, playback->pixelCount);
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    float c = 1;
+    if (i < fillIndex)
+    {
+      c = 1;
+    }
+    else
+    {
+      if (i > playback->ledIndex)
+      {
+        c = 0;
+      }
+    }
+    strip->setPixelColor(i, clamp01(c));
+  }
+}
+
+void chargeStep1(int fillSize)
+{
+  int fillIndex = sequenceStep * fillSize;
+  float duration = 1.0f * (1 - 1.0f * fillIndex / playback->pixelCount);
+  if (duration < 0.1f)
+  {
+    duration = 0.1f;
+  }
+
+  if (playback->updateStepTime(duration)) return;
+  
+  playback->ledIndex = easeInSine(playback->normalizedStepTime) * playback->pixelCount;
+  playback->ledIndex = playback->pixelCount - playback->ledIndex;
+  playback->ledIndex = map(playback->ledIndex, 0, playback->pixelCount, fillIndex, playback->pixelCount);
+
+  if (sequenceStep > 0)
+  {
+    float bounceTime = playback->normalizedStepTime * 1.5f;
+    float bounceIndex = 0;
+    if (bounceTime < 1)
+    {
+      bounceIndex = sin(PI * easeOut(bounceTime)) * fillSize * 1.5f;
+      if (bounceTime > 0.5f && bounceIndex < fillSize)
+      {
+        bounceIndex = fillSize;
+      } 
+    }
+    else
+    {
+      bounceIndex = fillSize;
+    }
+
+    fillIndex = fillSize * (sequenceStep - 1) + bounceIndex;
+  }
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    float c = 1;
+    if (i < fillIndex)
+    {
+      c = 1;
+    }
+    else
+    {
+      c = 1 - inverseLerp(playback->ledIndex, playback->ledIndex + fillSize, i); 
+      if (i < playback->ledIndex)
+      {
+        c = 0;
+      }
+    }
+    strip->setPixelColor(i, clamp01(c));
+  }
+}
+
+void dropsTime(int segmentLength)
+{
+  playback->updateStepTime(4.0f, true);
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    int ii = (i + playback->ledIndex) % playback->pixelCount;
+    int segmentCount = playback->pixelCount / segmentLength;
+    float c = 1.0 * (i % segmentLength) / segmentLength;
+    strip->setPixelColor(ii, c);
+  }
+}
+
+void cylon(int length)
+{
+  if (playback->updateStepTime(2.0f, true)) return;
+
+  bool isReverse = playback->normalizedStepTime > 0.5;
+  if (isReverse)
+  {
+    playback->normalizedStepTime -= 0.5;
+  }
+
+  playback->normalizedStepTime *= 2;
+
+  playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+  length = lerp(length / 2, length, playback->normalizedStepTime);
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    float c = inverseLerp(playback->ledIndex - length, playback->ledIndex, i);
+    c = easeIn(c);
+    if (i > playback->ledIndex)
+    {
+      c = 0;
+    }
+
+    if (isReverse) {
+      strip->setPixelColor(i, c);
+    } else {
+      strip->setPixelColor(playback->pixelCount - i - 1, c);
+    }
+  }
+}
+
+void firebolt(int length)
+{
+  if (playback->isTickEnd)
+  {
+    generateRandomStripValues();
+  }
+
+  if (playback->updateStepTime(2.0f, true)) return;
+
+  playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    float c = inverseLerp(playback->ledIndex - length, playback->ledIndex, i);
+    c = easeOut(c);
+    if (i > playback->ledIndex)
+    {
+      c = 0;
+    }
+    else
+    {
+      byte value = stripValues[i];
+      value -= 10;
+      stripValues[i] = value;
+      c *= value / 255.0;
+    }
+
+    strip->setPixelColor(i, clamp01(c));
+  }
+}
+
+void fireworks()
+{
+  switch (sequenceStep)
+  {
+    case 0: fireworksStep1(); break;
+    case 1: fireworksStep2(); break;
+    case 2: fireworksStep3(); break;
+  }
+}
+
+void fireworksStep1()
+{
+  if (playback->updateStepTime(1.0f))
+  {
+    generateRandomStripValues();
+    return;
+  }
+  
+  playback->ledIndex = easeOutSine(playback->normalizedStepTime) * playback->pixelCount;
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    float c = inverseLerp(playback->ledIndex - 60, playback->ledIndex, i); 
+    if (i > playback->ledIndex)
+    {
+      c = 0;
+    }
+    strip->setPixelColor(i, clamp01(c));
+  }
+}
+
+void fireworksStep2()
+{
+  if (playback->updateStepTime(0.15)) return;
+  
+  playback->ledIndex = playback->pixelCount - easeOut(playback->normalizedStepTime) * playback->pixelCount;
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    float c = inverseLerp(playback->ledIndex - 30, playback->ledIndex, i); 
+    strip->setPixelColor(i, c);
+  }
+}
+
+void fireworksStep3()
+{
+  if (playback->updateStepTime(2, true)) return;
+
+  float exploTime = playback->normalizedStepTime * 4;
+  float exploFactor = easeOut(1 - clamp01(exploTime));
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    byte value = stripValues[i];
+    value -= 10;
+    stripValues[i] = value;
+  
+    float c = 1.0 * value / 255;
+    c *= easeIn(1 - playback->normalizedStepTime);
+
+    c = lerp(c, 1.0, exploFactor);
+
+    strip->setPixelColor(i, c);
+  }
+}
+
+void wavesSeq()
+{
+  float s[seqLength];
+  for (int i = 0; i < seqLength; ++i)
+  {
+    float v = sin(PI * float(i) / seqLength);
+    v = v * 1.2 - 0.2;
+    s[i] = v > 0 ? v : 0;
+  }
+
+  updateSeq(s);
+}
+
+void wavesHalfSeq()
+{
+  float s[SEQ_LENGTH];
+  for (int i = 0; i < SEQ_LENGTH; ++i)
+  {
+    float v = sin(0.5 * PI * float(i) / SEQ_LENGTH);
+    v = v * 1.2 - 0.2;
+    s[i] = v > 0 ? v : 0;
+  }
+
+  updateSeq(s);
+}
+
+void wavesSqrtSeq()
+{
+  float s[SEQ_LENGTH];
+  for (int i = 0; i < SEQ_LENGTH; ++i)
+  {
+    //float v = float(i) / SEQ_LENGTH);
+    //v = v * 1.2 - 0.2;
+    float x = float(i) / SEQ_LENGTH;
+    s[i] = x * x;
+  }
+
+  updateSeq(s);
+}
+
+void wavesHardSeq()
+{
+  float s[seqLength];
+  for (int i = 0; i < seqLength; ++i)
+  {
+    s[i] = i > seqLength / 2 ? 1 : 0;
+  }
+
+  updateSeq(s);
+}
+
+void updateSeq(float seqValues[])
+{
+  playback->updateStepTime(6.0f, true);
+
+  playback->ledIndex = easeInSine(playback->normalizedStepTime) * playback->pixelCount;
+  
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    int ii = i - playback->ledIndex;
+    if (ii < 0)
+    {
+      ii += playback->pixelCount;
+    }
+   
+    float c = seqValues[ii % seqLength];
+
+    strip->setPixelColor(i, c);
+  }
+}
+
+void grow(float duration)
+{
+  isBeatChangingColor = true;
+  isBeatResettingSequence = true;
+
+  if (playback->updateStepTime(duration, 2, false)) return;
+  
+  byte tailLength = 30;
+  bool isUp = tickCount % 2 == 0;
+  if (isUp)
+  {
+    playback->ledIndex = easeIn(playback->normalizedStepTime) * playback->pixelCount;
+  }
+  else
+  {
+    playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
+  }
+  
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    int ii = (i + playback->ledIndex) % playback->pixelCount;
+    float c;
+    
+    if (isUp)
+    { 
+      c = 1 - inverseLerp(playback->ledIndex, playback->ledIndex + tailLength, i); 
+    }
+    else
+    {
+      int inv = playback->pixelCount - playback->ledIndex;
+      c = 1 - inverseLerp(inv, inv + tailLength, i); 
+    }
+    
+    strip->setPixelColor(i, c);
+  }
+}
+
+void solid()
+{
+  playback->updateStepTime(1.0f, true);
+
+  float c = brightness;
+  uint32_t color = getColor(c * redValue, c * greenValue, c * blueValue);
+  setColorToAll(color);
+}
+
+void rainbow(int segmentLength)
+{
+  playback->updateStepTime(4.0f, true);
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    int ii = (i + stepTicks) % playback->pixelCount;
+    byte c = 255.0 * i / segmentLength;
+
+    strip->setPixelColor(ii, wheel(c, brightness));
+  }
+}
+
+void rainbowWaves(int segmentLength)
+{
+  playback->updateStepTime(4.0f, true);
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    int ii = (i + playback->ledIndex) % playback->pixelCount;
+    byte c = 255.0 * i / segmentLength;
+
+    float b = 1.0 * playback->ledIndex / playback->pixelCount;
+    b = sin(b * 3.1459);
+
+    strip->setPixelColor(ii, wheel(c, b * brightness));
+  }
+}
+
+void centerWave(int segmentLength)
+{
+  if (playback->updateStepTime(3.0f, true)) return;
+
+  for (int i = 0; i <= CENTERPIX; i++)
+  {
+    int ii = (i + playback->ledIndex) % CENTERPIX;
+    float c = sin(PI * ii * segmentLength / CENTERPIX);
+    c = (c + 1) * 0.5; 
+    c *= sin(PI * i / CENTERPIX);
+
+    strip->setPixelColor(i, c);
+  }
+
+  copyHalfStrip();
+}
+
+void randomSparksOverdrive()
+{
+  if (playback->isTickEnd)
+  {
+    generateRandomStripValues();
+  }
+
+  playback->updateStepTime(1.5f, true);
+  float t = easeIn(playback->normalizedStepTime);
+  const byte speed = 4;
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    byte value = stripValues[i];
+    value -= speed;
+    stripValues[i] = value;
+  
+    float brightness = (1 - t) * value / 255;
+    byte c = i;
+    strip->setPixelColor(i, wheel(c, brightness));
+  }
+}
+
+void randomSparks(int segmentLength)
+{
+  if (playback->isTickEnd)
+  {
+    generateRandomStripValues();
+  }
+
+  playback->updateStepTime(1.0f, true);
+
+  const byte speed = 3;
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    byte value = stripValues[i];
+    value -= speed;
+    stripValues[i] = value;
+  
+    float c = (1 - playback->normalizedStepTime) * value / 255;
+
+    strip->setPixelColor(i, c);
+  }
+}
+
+void stroboFade(int fadeDurationTicks)
+{
+  playback->updateStepTime(1.0f, true);
+
+  float c = 1 - playback->normalizedStepTime;
+  c = 0.2 + c * 0.8;
+  setColorToAll(c);
+}
+
+void strobo(int fadeDurationTicks)
+{
+  playback->updateStepTime(1.0f, true);
+
+  float c = playback->ledIndex * 2 / fadeDurationTicks;
+  setColorToAll(c);
+}
+
+void pulse(int fadeDurationTicks)
+{
+  playback->updateStepTime(1.0f, true);
+
+  float c = playback->normalizedStepTime;
+  c = sin(c * PI);
+  c = 0.2 + c * 0.8;
+  setColorToAll(c);
+}
+
+void pingPong(int segmentLength)
+{
+  playback->updateStepTime(1.0f, 2);
+
+  for (int i = 0; i < playback->pixelCount; i++)
+  {
+    int ii = (i + playback->ledIndex) % playback->pixelCount;
+    int segmentCount = playback->pixelCount / segmentLength;
+    int o = ii / segmentCount;
+    //float c = 1.0 * (i % segmentLength) / segmentLength;
+    float c = i > playback->ledIndex ? 1.0 : 0.0;
+
+    strip->setPixelColor(i, c);
+  }
+}

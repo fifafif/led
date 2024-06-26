@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "Test",
+			"path": "C:/Users/filip/OneDrive/Documents/PlatformIO/Projects/Test"
+		},
+		{
+			"name": "ino_led",
+			"path": "../ino_led"
+		}
+	],
+	"settings": {}
+}
