@@ -16,7 +16,7 @@ class Animations
     const int OVERDRIVE_INDEX_1_LENGTH = 5;
     
   #if defined(PROD)
-    const byte switchAutoModeEveryTickCount = 8;
+    const byte switchAutoModeEveryTickCount = 16;
   #else
     const byte switchAutoModeEveryTickCount = 2;
   #endif
@@ -51,21 +51,22 @@ class Animations
       this->strip = stripHandler;
       
       animations = new Animation*[ANIMATION_COUNT];
-      animations[0] = new CylonAnimation(playback, stripHandler, 100); 
-      animations[1] = new FireboltAnimation(playback, stripHandler, 60);
-      animations[2] = new SegmentAnimation(playback, stripHandler, 0, 50);
-      animations[3] = new SegmentAnimation(playback, stripHandler, 1, 50);
-      animations[4] = new DropsTimeAnimation(playback, stripHandler, 50);
-      animations[5] = new SparksAnimation(playback, stripHandler);
-      animations[6] = new GrowAnimation(playback, stripHandler, 1);
-      animations[7] = new PingPongAnimation(playback, stripHandler, 100);
-      animations[8] = new PulseAnimation(playback, stripHandler, 100);
-      animations[9] = new SineWaveAnimation(playback, stripHandler, 2);
+      animations[0] = new CylonAnimation(playback, stripHandler, 100, 1.0f); 
+      animations[1] = new CylonAnimation(playback, stripHandler, 50, 2.0f); 
+      animations[2] = new FireboltAnimation(playback, stripHandler, 60, 2.0f);
+      animations[3] = new FireboltAnimation(playback, stripHandler, 40, 4.0f);
+      animations[4] = new SegmentAnimation(playback, stripHandler, 0, 50);
+      animations[5] = new SegmentAnimation(playback, stripHandler, 1, 50);
+      animations[6] = new DropsTimeAnimation(playback, stripHandler, 50);
+      // animations[5] = new SparksAnimation(playback, stripHandler);
+      animations[7] = new GrowAnimation(playback, stripHandler, 1);
+      animations[8] = new PingPongAnimation(playback, stripHandler, 100);
+      animations[9] = new PulseAnimation(playback, stripHandler, 100);
+      animations[10] = new SineWaveAnimation(playback, stripHandler, 2);
       // animations[10] = new SegmentFillAnimation(playback, stripHandler, 6);
-      animations[10] = new StarsAnimation(playback, stripHandler, 6);
-      //animations[11] = new StarsAnimation(playback, stripHandler, 6);
-      animations[11] = new MovingStarsAnimation(playback, stripHandler, 10);
-      animations[12] = new MovingFirebolsAnimation(playback, stripHandler, 10);
+      animations[11] = new StarsAnimation(playback, stripHandler, 6);
+      // animations[11] = new MovingStarsAnimation(playback, stripHandler, 10);
+      // animations[12] = new MovingFirebolsAnimation(playback, stripHandler, 10);
 
       overdriveAnimations = new Animation*[OVERDRIVE_ANIMATION_COUNT];
       overdriveAnimations[0] = new ChargeOverdriveAnimation(playback, stripHandler, 20); 
@@ -90,14 +91,14 @@ class Animations
 
 
 #if !defined(PROD)
-      // debugAnimationIndex = 10;
-      debugOverdriveAnimationIndex = 4;
-      isOverdrive = true;
+      debugAnimationIndex = 11;
+      // debugOverdriveAnimationIndex = 4;
+      // isOverdrive = true;
 
-      if (isOverdrive)
-      {
-        choseRandomOverdrive();
-      }
+      // if (isOverdrive)
+      // {
+      //   choseRandomOverdrive();
+      // }
 #endif
 
       choseRandomAnimation();
@@ -245,7 +246,7 @@ class Animations
       int newIndex = currentAnimationIndex;
       while (newIndex == currentAnimationIndex)
       {
-        newIndex = random(11);
+        newIndex = random(12);
       }
 
       String msg = "new sequence: ";

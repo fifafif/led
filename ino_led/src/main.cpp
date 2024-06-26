@@ -4,7 +4,7 @@
 #define PROD
 
 // LED Debug
-// #define LED_SIM_ONLY
+#define LED_SIM_ONLY
 #define LED_SIM_DEBUG
 #define LED_SIM_PRINT
 // #define LED_SIM_PRINT_BYTES
@@ -92,7 +92,13 @@ const bool IS_BEAT_REACTIVE = false;
 byte redValueDMX = 255;
 byte greenValueDMX = 255;
 byte blueValueDMX = 0;
-float brightness = 1.0f;
+
+#if defined(PROD)
+float brightness = 0.06f;
+#else
+float brightness = 1;
+#endif
+
 byte stroboMode = 0;
 byte mode = 255;
 

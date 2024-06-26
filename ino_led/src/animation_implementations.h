@@ -994,6 +994,7 @@ class SparksAnimation : public Animation
       
         float brightness = (1 - t) * value / 255;
         byte c = i;
+        brightness *= strip->brightness;
         strip->setPixelColor(i, wheel(c, brightness));
       }
     }
@@ -1107,15 +1108,17 @@ class FireboltAnimation : public Animation
     
     int length;
     float beatValue = 0;
+    float duration;
 
-    FireboltAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    FireboltAnimation(Playback *playback, StripHandler *strip, int length, float duration) : Animation(playback, strip)
     {
       this->length = length;
+      this->duration = duration;
     }
 
     void update()
     {
-      if (playback->updateStepTime(2.0f)) return;
+      if (playback->updateStepTime(duration)) return;
 
       playback->ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
 
@@ -1156,7 +1159,7 @@ class FireboltAnimation : public Animation
 
     void onBeat()
     {
-      beatValue = BEAT_MAX_VALUE;
+      // beatValue = BEAT_MAX_VALUE;
     }
 };
 
@@ -1165,20 +1168,22 @@ class CylonAnimation : public Animation
   public:
     int length;
     float beatLength;
+    float duration = 1;
     const float MAX_BEAT_LENGTH_PERCENT = 50;
     const float BEAT_FADE_DURATION = 0.5f;
     const float BEAT_VALUE = 0.5f;
     float maxBeatLength;
 
-    CylonAnimation(Playback *playback, StripHandler *strip, int length) : Animation(playback, strip)
+    CylonAnimation(Playback *playback, StripHandler *strip, int length, float duration) : Animation(playback, strip)
     {
       this->length = length;
+      this->duration = duration;
       maxBeatLength = playback->pixelCount * MAX_BEAT_LENGTH_PERCENT * 0.01f;
     }
 
     void update()
     {
-      if (playback->updateStepTime(1.0f, 2)) return;
+      if (playback->updateStepTime(this->duration, 2)) return;
 
       bool isReverse = playback->sequenceStep % 2 == 1;
       int ledIndex = easeOut(playback->normalizedStepTime) * playback->pixelCount;
@@ -1211,7 +1216,7 @@ class CylonAnimation : public Animation
         }
       }
 
-      centerGlowBeat(beatLength, BEAT_VALUE);
+      // centerGlowBeat(beatLength, BEAT_VALUE);
     }
 
     void onBeat()
